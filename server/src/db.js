@@ -1,82 +1,228 @@
-import Database from "better-sqlite3";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { JsonRpcProvider, Wallet, Contract } from "ethers";
+import dotenv from "dotenv";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, "..", "agentpassport.db");
+// Explicitly resolve the path and enable override to ensure changes in server/.env are loaded
+dotenv.config({ path: path.resolve(__dirname, "..", ".env"), override: true });
 
-export const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
+const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", "AgentPassport.sol", "AgentPassport.json");
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS agents (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    creator TEXT NOT NULL,
-    purpose TEXT NOT NULL,
-    requestedPermissions TEXT NOT NULL,
-    grantedPermissions TEXT NOT NULL,
-    riskLevel TEXT NOT NULL,
-    trustScore INTEGER NOT NULL,
-    spendingLimit INTEGER NOT NULL,
-    verificationStatus TEXT NOT NULL,
-    createdAt TEXT NOT NULL
-  );
+// Read ABI from the artifact
+const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
+const abi = artifact.abi;
 
-  CREATE TABLE IF NOT EXISTS visas (
-    id TEXT PRIMARY KEY,
-    agentId TEXT NOT NULL,
-    website TEXT NOT NULL,
-    status TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    issuedAt TEXT NOT NULL,
-    FOREIGN KEY (agentId) REFERENCES agents(id)
-  );
+const provider = new JsonRpcProvider(process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology");
+const wallet = new Wallet(process.env.AMOY_PRIVATE_KEY, provider);
+export const contract = new Contract(process.env.CONTRACT_ADDRESS, abi, wallet);
 
-  CREATE TABLE IF NOT EXISTS stamps (
-    id TEXT PRIMARY KEY,
-    agentId TEXT NOT NULL,
-    website TEXT NOT NULL,
-    action TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    FOREIGN KEY (agentId) REFERENCES agents(id)
-  );
+// Helper to get fresh nonce directly from the node without provider caching
+async function getFreshNonce() {
+  const hexCount = await provider.send("eth_getTransactionCount", [wallet.address, "latest"]);
+  return parseInt(hexCount, 16);
+}
 
-  CREATE TABLE IF NOT EXISTS blacklist (
-    id TEXT PRIMARY KEY,
-    agentName TEXT,
-    creator TEXT,
-    reason TEXT NOT NULL,
-    addedAt TEXT NOT NULL
-  );
-`);
+// Map Solidity outputs to JS structures
+function mapAgent(solAgent) {
+  return {
+    id: solAgent.id,
+    name: solAgent.name,
+    creator: solAgent.creator,
+    purpose: solAgent.purpose,
+    requestedPermissions: solAgent.requestedPermissions,
+    grantedPermissions: solAgent.grantedPermissions,
+    riskLevel: solAgent.riskLevel,
+    trustScore: Number(solAgent.trustScore),
+    spendingLimit: Number(solAgent.spendingLimit),
+    verificationStatus: solAgent.verificationStatus,
+    createdAt: solAgent.createdAt,
+    exists: solAgent.exists
+  };
+}
 
-// Seed a few known-bad demo entries so the blacklist has something to show
-// out of the box. Matched case-insensitively against agentName/creator at
-// registration and visa time.
-const blacklistSeed = [
-  { agentName: "ScrapeMaster", creator: "DarkNet Bots Inc", reason: "Repeated unauthorized data scraping across partner sites." },
-  { agentName: "SpamKing3000", creator: null, reason: "Flagged for mass spam posting campaigns." },
-  { agentName: null, creator: "Fraudulent Ventures LLC", reason: "Creator associated with prior payment fraud incidents." },
-];
+// Visa mapping helper
+function mapVisa(v) {
+  return {
+    id: v.id,
+    agentId: v.agentId,
+    website: v.website,
+    status: v.status,
+    reason: v.reason,
+    issuedAt: v.issuedAt
+  };
+}
 
-const blacklistCount = db.prepare("SELECT COUNT(*) AS c FROM blacklist").get().c;
-if (blacklistCount === 0) {
-  const insertBlacklist = db.prepare(
-    `INSERT INTO blacklist (id, agentName, creator, reason, addedAt) VALUES (?, ?, ?, ?, ?)`
-  );
-  for (const entry of blacklistSeed) {
-    insertBlacklist.run(
-      `BL-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
-      entry.agentName,
-      entry.creator,
-      entry.reason,
-      new Date().toISOString()
-    );
+function mapStamp(s) {
+  return {
+    id: s.id,
+    agentId: s.agentId,
+    website: s.website,
+    action: s.action,
+    timestamp: s.timestamp
+  };
+}
+
+function mapBlacklistEntry(b) {
+  return {
+    id: b.id,
+    agentName: b.agentName || null,
+    creator: b.creator || null,
+    reason: b.reason,
+    addedAt: b.addedAt
+  };
+}
+
+// Database API wrapper functions mapping to blockchain
+export async function getAgent(id) {
+  try {
+    const rawAgent = await contract.getAgent(id);
+    return mapAgent(rawAgent);
+  } catch (error) {
+    if (error.message.includes("Agent does not exist") || error.message.includes("panic")) {
+      return null;
+    }
+    return null;
   }
 }
 
-// Demo "websites" acting as countries, each with entry rules.
+export async function getAllAgents() {
+  try {
+    const ids = await contract.getAllAgentIds();
+    const list = [];
+    for (const id of ids) {
+      const agent = await getAgent(id);
+      if (agent) list.push(agent);
+    }
+    return list;
+  } catch (error) {
+    console.error("Error fetching all agents:", error);
+    return [];
+  }
+}
+
+export async function registerAgent(agentData) {
+  const agentStruct = {
+    id: agentData.id,
+    name: agentData.name,
+    creator: agentData.creator,
+    purpose: agentData.purpose,
+    requestedPermissions: JSON.stringify(agentData.requestedPermissions),
+    grantedPermissions: JSON.stringify(agentData.grantedPermissions),
+    riskLevel: agentData.riskLevel,
+    trustScore: agentData.trustScore,
+    spendingLimit: agentData.spendingLimit,
+    verificationStatus: agentData.verificationStatus,
+    createdAt: agentData.createdAt,
+    exists: true
+  };
+  const nonce = await getFreshNonce();
+  const tx = await contract.registerAgent(agentStruct, { nonce });
+  await tx.wait();
+  return getAgent(agentData.id);
+}
+
+export async function updateTrustScore(id, trustScore, reason) {
+  const nonce = await getFreshNonce();
+  const tx = await contract.updateTrustScore(id, trustScore, reason, { nonce });
+  await tx.wait();
+  return getAgent(id);
+}
+
+export async function updateVerificationStatus(id, status) {
+  const nonce = await getFreshNonce();
+  const tx = await contract.updateVerificationStatus(id, status, { nonce });
+  await tx.wait();
+  return getAgent(id);
+}
+
+export async function addVisa(visaData) {
+  const nonce = await getFreshNonce();
+  const tx = await contract.addVisa({
+    id: visaData.id,
+    agentId: visaData.agentId,
+    website: visaData.website,
+    status: visaData.status,
+    reason: visaData.reason,
+    issuedAt: visaData.issuedAt
+  }, { nonce });
+  await tx.wait();
+  return visaData;
+}
+
+export async function getVisas(agentId) {
+  try {
+    const list = await contract.getVisas(agentId);
+    return list.map(mapVisa);
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function addStamp(stampData) {
+  const nonce = await getFreshNonce();
+  const tx = await contract.addStamp({
+    id: stampData.id,
+    agentId: stampData.agentId,
+    website: stampData.website,
+    action: stampData.action,
+    timestamp: stampData.timestamp
+  }, { nonce });
+  await tx.wait();
+  return stampData;
+}
+
+export async function getStamps(agentId) {
+  try {
+    const list = await contract.getStamps(agentId);
+    return list.map(mapStamp);
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getBlacklist() {
+  try {
+    const list = await contract.getBlacklist();
+    return list.map(mapBlacklistEntry);
+  } catch (error) {
+    console.error("Error fetching blacklist:", error);
+    return [];
+  }
+}
+
+export async function addToBlacklist(entry, overrides = {}) {
+  const nonce = await getFreshNonce();
+  const tx = await contract.addToBlacklist({
+    id: entry.id,
+    agentName: entry.agentName || "",
+    creator: entry.creator || "",
+    reason: entry.reason,
+    addedAt: entry.addedAt
+  }, { nonce, ...overrides });
+  await tx.wait();
+  return entry;
+}
+
+export function nowIso() {
+  return new Date().toISOString();
+}
+
+export async function findBlacklistMatch(name, creator) {
+  const rows = await getBlacklist();
+  const nameLower = (name || "").toLowerCase();
+  const creatorLower = (creator || "").toLowerCase();
+
+  return (
+    rows.find((row) => {
+      const nameMatch = row.agentName && row.agentName.toLowerCase() === nameLower;
+      const creatorMatch = row.creator && row.creator.toLowerCase() === creatorLower;
+      return nameMatch || creatorMatch;
+    }) || null
+  );
+}
+
 export const WEBSITES = {
   "ShopSite.com": {
     name: "ShopSite.com",
@@ -107,23 +253,3 @@ export const WEBSITES = {
     minTrustScore: 30,
   },
 };
-
-export function nowIso() {
-  return new Date().toISOString();
-}
-
-// Checks whether a given agent name / creator matches any blacklist entry
-// (case-insensitive). Returns the matching row, or null if clean.
-export function findBlacklistMatch(name, creator) {
-  const rows = db.prepare("SELECT * FROM blacklist").all();
-  const nameLower = (name || "").toLowerCase();
-  const creatorLower = (creator || "").toLowerCase();
-
-  return (
-    rows.find((row) => {
-      const nameMatch = row.agentName && row.agentName.toLowerCase() === nameLower;
-      const creatorMatch = row.creator && row.creator.toLowerCase() === creatorLower;
-      return nameMatch || creatorMatch;
-    }) || null
-  );
-}

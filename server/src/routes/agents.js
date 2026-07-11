@@ -1,20 +1,36 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { db, WEBSITES, nowIso, findBlacklistMatch } from "../db.js";
+import { 
+  getAgent, 
+  getAllAgents, 
+  registerAgent, 
+  updateTrustScore, 
+  updateVerificationStatus, 
+  addVisa, 
+  getVisas, 
+  addStamp, 
+  getStamps, 
+  getBlacklist, 
+  addToBlacklist, 
+  findBlacklistMatch, 
+  WEBSITES, 
+  nowIso 
+} from "../db.js";
 import { analyzeAgentPurpose } from "../ai.js";
 
 export const agentsRouter = Router();
 
 function serializeAgent(row) {
+  if (!row) return null;
   return {
     ...row,
-    requestedPermissions: JSON.parse(row.requestedPermissions),
-    grantedPermissions: JSON.parse(row.grantedPermissions),
+    requestedPermissions: JSON.parse(row.requestedPermissions || "[]"),
+    grantedPermissions: JSON.parse(row.grantedPermissions || "[]"),
   };
 }
 
-function getAgentOr404(req, res) {
-  const row = db.prepare("SELECT * FROM agents WHERE id = ?").get(req.params.id);
+async function getAgentOr404(req, res) {
+  const row = await getAgent(req.params.id);
   if (!row) {
     res.status(404).json({ error: "Agent not found" });
     return null;
@@ -22,18 +38,24 @@ function getAgentOr404(req, res) {
   return row;
 }
 
-// GET /api/agents/websites — list demo websites (registered before /:id to avoid path clash)
+// GET /api/agents/websites — list demo websites
 agentsRouter.get("/websites", (req, res) => {
   res.json(Object.values(WEBSITES));
 });
 
-// Blacklist admin routes — also registered before /:id to avoid path clash
-agentsRouter.get("/blacklist/all", (req, res) => {
-  const rows = db.prepare("SELECT * FROM blacklist ORDER BY addedAt DESC").all();
-  res.json(rows);
+// Blacklist admin routes
+agentsRouter.get("/blacklist/all", async (req, res) => {
+  try {
+    const rows = await getBlacklist();
+    // Sort descending by addedAt
+    const sorted = [...rows].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    res.json(sorted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-agentsRouter.post("/blacklist/all", (req, res) => {
+agentsRouter.post("/blacklist/all", async (req, res) => {
   const { agentName, creator, reason } = req.body;
 
   if (!agentName && !creator) {
@@ -43,180 +65,220 @@ agentsRouter.post("/blacklist/all", (req, res) => {
     return res.status(400).json({ error: "reason is required" });
   }
 
-  const id = `BL-${nanoid(8).toUpperCase()}`;
-  const addedAt = nowIso();
-  db.prepare(
-    `INSERT INTO blacklist (id, agentName, creator, reason, addedAt) VALUES (?, ?, ?, ?, ?)`
-  ).run(id, agentName || null, creator || null, reason, addedAt);
+  try {
+    const id = `BL-${nanoid(8).toUpperCase()}`;
+    const addedAt = nowIso();
+    
+    await addToBlacklist({
+      id,
+      agentName: agentName || "",
+      creator: creator || "",
+      reason,
+      addedAt
+    });
 
-  const matches = db.prepare("SELECT * FROM agents").all().filter((a) => {
-    const nameMatch = agentName && a.name.toLowerCase() === agentName.toLowerCase();
-    const creatorMatch = creator && a.creator.toLowerCase() === creator.toLowerCase();
-    return nameMatch || creatorMatch;
-  });
-  for (const match of matches) {
-    db.prepare("UPDATE agents SET verificationStatus = 'blacklisted' WHERE id = ?").run(match.id);
+    const allAgents = await getAllAgents();
+    const matches = allAgents.filter((a) => {
+      const nameMatch = agentName && a.name.toLowerCase() === agentName.toLowerCase();
+      const creatorMatch = creator && a.creator.toLowerCase() === creator.toLowerCase();
+      return nameMatch || creatorMatch;
+    });
+
+    for (const match of matches) {
+      await updateVerificationStatus(match.id, "blacklisted");
+    }
+
+    res.status(201).json({
+      entry: { id, agentName, creator, reason, addedAt },
+      flaggedAgentIds: matches.map((m) => m.id),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-
-  res.status(201).json({
-    entry: { id, agentName, creator, reason, addedAt },
-    flaggedAgentIds: matches.map((m) => m.id),
-  });
 });
 
 // POST /api/agents — register agent, analyze purpose, generate passport
-agentsRouter.post("/", (req, res) => {
+agentsRouter.post("/", async (req, res) => {
   const { name, creator, purpose, requestedPermissions } = req.body;
 
   if (!name || !creator || !purpose) {
     return res.status(400).json({ error: "name, creator, and purpose are required" });
   }
 
-  const perms = Array.isArray(requestedPermissions) ? requestedPermissions : [];
-  const analysis = analyzeAgentPurpose({ name, creator, purpose, requestedPermissions: perms });
+  try {
+    const perms = Array.isArray(requestedPermissions) ? requestedPermissions : [];
+    const analysis = analyzeAgentPurpose({ name, creator, purpose, requestedPermissions: perms });
 
-  const id = `AGT-${nanoid(8).toUpperCase()}`;
-  const createdAt = nowIso();
+    const id = `AGT-${nanoid(8).toUpperCase()}`;
+    const createdAt = nowIso();
 
-  const blacklistMatch = findBlacklistMatch(name, creator);
+    const blacklistMatch = await findBlacklistMatch(name, creator);
 
-  let verificationStatus = analysis.riskLevel === "high" ? "pending" : "verified";
-  let trustScore = analysis.trustScore;
-  let grantedPermissions = analysis.grantedPermissions;
+    let verificationStatus = analysis.riskLevel === "high" ? "pending" : "verified";
+    let trustScore = analysis.trustScore;
+    let grantedPermissions = analysis.grantedPermissions;
 
-  if (blacklistMatch) {
-    verificationStatus = "blacklisted";
-    trustScore = Math.min(trustScore, 5);
-    grantedPermissions = [];
+    if (blacklistMatch) {
+      verificationStatus = "blacklisted";
+      trustScore = Math.min(trustScore, 5);
+      grantedPermissions = [];
+    }
+
+    const registered = await registerAgent({
+      id,
+      name,
+      creator,
+      purpose,
+      requestedPermissions: perms,
+      grantedPermissions,
+      riskLevel: analysis.riskLevel,
+      trustScore,
+      spendingLimit: blacklistMatch ? 0 : analysis.spendingLimit,
+      verificationStatus,
+      createdAt
+    });
+
+    res.status(201).json({
+      agent: serializeAgent(registered),
+      analysis,
+      blacklistMatch: blacklistMatch ? { reason: blacklistMatch.reason } : null,
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: error.message });
   }
-
-  db.prepare(
-    `INSERT INTO agents
-      (id, name, creator, purpose, requestedPermissions, grantedPermissions, riskLevel, trustScore, spendingLimit, verificationStatus, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    id,
-    name,
-    creator,
-    purpose,
-    JSON.stringify(perms),
-    JSON.stringify(grantedPermissions),
-    analysis.riskLevel,
-    trustScore,
-    blacklistMatch ? 0 : analysis.spendingLimit,
-    verificationStatus,
-    createdAt
-  );
-
-  const row = db.prepare("SELECT * FROM agents WHERE id = ?").get(id);
-  res.status(201).json({
-    agent: serializeAgent(row),
-    analysis,
-    blacklistMatch: blacklistMatch ? { reason: blacklistMatch.reason } : null,
-  });
 });
 
 // GET /api/agents/:id — fetch passport
-agentsRouter.get("/:id", (req, res) => {
-  const row = getAgentOr404(req, res);
-  if (!row) return;
-  res.json(serializeAgent(row));
+agentsRouter.get("/:id", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
+    res.json(serializeAgent(row));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // POST /api/agents/:id/visa — apply for visa to a demo website
-agentsRouter.post("/:id/visa", (req, res) => {
-  const row = getAgentOr404(req, res);
-  if (!row) return;
+agentsRouter.post("/:id/visa", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
 
-  const { website } = req.body;
-  const site = WEBSITES[website];
-  if (!site) {
-    return res.status(400).json({ error: `Unknown website "${website}"` });
-  }
-
-  const agent = serializeAgent(row);
-  const blacklistMatch = findBlacklistMatch(agent.name, agent.creator);
-
-  if (agent.verificationStatus === "blacklisted" || blacklistMatch) {
-    const reason = blacklistMatch
-      ? `Agent is blacklisted: ${blacklistMatch.reason}`
-      : "Agent is blacklisted.";
-    if (agent.verificationStatus !== "blacklisted") {
-      db.prepare("UPDATE agents SET verificationStatus = 'blacklisted' WHERE id = ?").run(agent.id);
+    const { website } = req.body;
+    const site = WEBSITES[website];
+    if (!site) {
+      return res.status(400).json({ error: `Unknown website "${website}"` });
     }
-    return res.json(recordVisa(agent.id, website, "denied", reason));
+
+    const agent = serializeAgent(row);
+    const blacklistMatch = await findBlacklistMatch(agent.name, agent.creator);
+
+    if (agent.verificationStatus === "blacklisted" || blacklistMatch) {
+      const reason = blacklistMatch
+        ? `Agent is blacklisted: ${blacklistMatch.reason}`
+        : "Agent is blacklisted.";
+      if (agent.verificationStatus !== "blacklisted") {
+        await updateVerificationStatus(agent.id, "blacklisted");
+      }
+      const recorded = await recordVisa(agent.id, website, "denied", reason);
+      return res.json(recorded);
+    }
+
+    const purposeLower = agent.purpose.toLowerCase();
+    const purposeMatches = site.allowedPurposeKeywords.some((k) => purposeLower.includes(k));
+    const trustOk = agent.trustScore >= site.minTrustScore;
+
+    let status, reason;
+    if (trustOk && purposeMatches) {
+      status = "approved";
+      reason = `Trust score ${agent.trustScore} meets minimum (${site.minTrustScore}) and purpose matches ${site.category} category.`;
+    } else if (!trustOk) {
+      status = "denied";
+      reason = `Trust score ${agent.trustScore} is below required minimum (${site.minTrustScore}) for ${website}.`;
+    } else {
+      status = "denied";
+      reason = `Stated purpose does not match ${website}'s allowed categories (${site.category}).`;
+    }
+
+    const result = await recordVisa(agent.id, website, status, reason);
+
+    if (status === "approved") {
+      await addStamp({
+        id: `STP-${nanoid(8).toUpperCase()}`,
+        agentId: agent.id,
+        website,
+        action: "Entry granted",
+        timestamp: nowIso()
+      });
+    }
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-
-  const purposeLower = agent.purpose.toLowerCase();
-  const purposeMatches = site.allowedPurposeKeywords.some((k) => purposeLower.includes(k));
-  const trustOk = agent.trustScore >= site.minTrustScore;
-
-  let status, reason;
-  if (trustOk && purposeMatches) {
-    status = "approved";
-    reason = `Trust score ${agent.trustScore} meets minimum (${site.minTrustScore}) and purpose matches ${site.category} category.`;
-  } else if (!trustOk) {
-    status = "denied";
-    reason = `Trust score ${agent.trustScore} is below required minimum (${site.minTrustScore}) for ${website}.`;
-  } else {
-    status = "denied";
-    reason = `Stated purpose does not match ${website}'s allowed categories (${site.category}).`;
-  }
-
-  const result = recordVisa(agent.id, website, status, reason);
-
-  if (status === "approved") {
-    db.prepare(
-      `INSERT INTO stamps (id, agentId, website, action, timestamp) VALUES (?, ?, ?, ?, ?)`
-    ).run(`STP-${nanoid(8).toUpperCase()}`, agent.id, website, "Entry granted", nowIso());
-  }
-
-  res.json(result);
 });
 
-function recordVisa(agentId, website, status, reason) {
+async function recordVisa(agentId, website, status, reason) {
   const id = `VISA-${nanoid(8).toUpperCase()}`;
   const issuedAt = nowIso();
-  db.prepare(
-    `INSERT INTO visas (id, agentId, website, status, reason, issuedAt) VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, agentId, website, status, reason, issuedAt);
+  await addVisa({
+    id,
+    agentId,
+    website,
+    status,
+    reason,
+    issuedAt
+  });
   return { id, agentId, website, status, reason, issuedAt };
 }
 
 // GET /api/agents/:id/stamps — activity log
-agentsRouter.get("/:id/stamps", (req, res) => {
-  const row = getAgentOr404(req, res);
-  if (!row) return;
-  const stamps = db
-    .prepare("SELECT * FROM stamps WHERE agentId = ? ORDER BY timestamp DESC")
-    .all(req.params.id);
-  const visas = db
-    .prepare("SELECT * FROM visas WHERE agentId = ? ORDER BY issuedAt DESC")
-    .all(req.params.id);
-  res.json({ stamps, visas });
+agentsRouter.get("/:id/stamps", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
+    const stamps = await getStamps(req.params.id);
+    const visas = await getVisas(req.params.id);
+    // Sort
+    const sortedStamps = [...stamps].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    const sortedVisas = [...visas].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+    res.json({ stamps: sortedStamps, visas: sortedVisas });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // POST /api/agents/:id/simulate-behavior — dev-only trust score bump
-agentsRouter.post("/:id/simulate-behavior", (req, res) => {
-  const row = getAgentOr404(req, res);
-  if (!row) return;
+agentsRouter.post("/:id/simulate-behavior", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
 
-  const { delta } = req.body;
-  const change = Number.isFinite(delta) ? delta : 0;
+    const { delta } = req.body;
+    const change = Number.isFinite(delta) ? delta : 0;
 
-  const newScore = Math.max(0, Math.min(100, row.trustScore + change));
-  const explicitlyBlacklisted = findBlacklistMatch(row.name, row.creator) !== null;
+    const newScore = Math.max(0, Math.min(100, row.trustScore + change));
+    const explicitlyBlacklisted = (await findBlacklistMatch(row.name, row.creator)) !== null;
 
-  let verificationStatus = row.verificationStatus;
-  if (newScore <= 10 || explicitlyBlacklisted) verificationStatus = "blacklisted";
-  else if (verificationStatus === "blacklisted" && newScore > 10) verificationStatus = "verified";
+    let verificationStatus = row.verificationStatus;
+    if (newScore <= 10 || explicitlyBlacklisted) {
+      verificationStatus = "blacklisted";
+    } else if (verificationStatus === "blacklisted" && newScore > 10) {
+      verificationStatus = "verified";
+    }
 
-  db.prepare("UPDATE agents SET trustScore = ?, verificationStatus = ? WHERE id = ?").run(
-    newScore,
-    verificationStatus,
-    row.id
-  );
+    // Submit trust score update on-chain
+    await updateTrustScore(row.id, newScore, `Behavior simulated with delta ${change}`);
 
-  const updated = db.prepare("SELECT * FROM agents WHERE id = ?").get(row.id);
-  res.json(serializeAgent(updated));
+    if (verificationStatus !== row.verificationStatus) {
+      await updateVerificationStatus(row.id, verificationStatus);
+    }
+
+    const updated = await getAgent(row.id);
+    res.json(serializeAgent(updated));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });

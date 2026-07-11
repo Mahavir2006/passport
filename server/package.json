@@ -7,9 +7,15 @@
     "dev": "node --watch src/index.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
+    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.17.0",
     "express": "^4.19.2",
     "nanoid": "^5.0.7"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "hardhat": "^3.9.1"
   }
 }
