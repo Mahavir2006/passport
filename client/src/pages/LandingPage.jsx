@@ -18,6 +18,9 @@ export default function LandingPage({ agent, onRegistered }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  const [regMode, setRegMode] = useState("url"); // "url" | "manual"
+  const [agentUrl, setAgentUrl] = useState("http://localhost:4001/metadata");
 
   const togglePermission = (id) => {
     setPermissions((prev) =>
@@ -25,8 +28,8 @@ export default function LandingPage({ agent, onRegistered }) {
     );
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleManualSubmit = async (e) => {
+    if (e) e.preventDefault();
     setError("");
     if (!form.name || !form.creator || !form.purpose) {
       setError("Please fill in all fields before applying.");
@@ -39,6 +42,31 @@ export default function LandingPage({ agent, onRegistered }) {
         requestedPermissions: permissions,
       });
       onRegistered(newAgent);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUrlSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setError("");
+    if (!agentUrl.trim()) {
+      setError("Please provide an Agent URL.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch("/api/agents/register-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: agentUrl.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to register via URL.");
+      
+      onRegistered(data.agent);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -245,97 +273,146 @@ export default function LandingPage({ agent, onRegistered }) {
                   </div>
                 ) : (
                   // Case B: No Agent - Show Registration Form
-                  <form
-                    onSubmit={handleSubmit}
-                    className="h-full flex flex-col justify-between py-1"
-                  >
+                  <div className="h-full flex flex-col justify-between py-1">
                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      <h3 className="font-black text-center text-[12px] uppercase text-[#111] border-b-[2px] border-[#111] pb-2 tracking-widest">
-                        New Agent Application / नया आवेदन
-                      </h3>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
-                          Agent Name
-                        </label>
-                        <input
-                          className="xp-input w-full py-1.5 text-xs font-bold text-[#111]"
-                          value={form.name}
-                          onChange={(e) => setForm({ ...form, name: e.target.value })}
-                          placeholder="e.g. ShoppingBot"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
-                          Creator
-                        </label>
-                        <input
-                          className="xp-input w-full py-1.5 text-xs font-bold text-[#111]"
-                          value={form.creator}
-                          onChange={(e) => setForm({ ...form, creator: e.target.value })}
-                          placeholder="e.g. Acme Corp"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
-                          Purpose
-                        </label>
-                        <textarea
-                          className="xp-input w-full py-1.5 text-xs leading-normal font-medium text-[#111] resize-none"
-                          rows={3}
-                          value={form.purpose}
-                          onChange={(e) => setForm({ ...form, purpose: e.target.value })}
-                          placeholder="Assists with shopping and Cart checkouts."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
-                          Permissions
-                        </label>
-                        <div className="xp-panel p-3 grid grid-cols-2 gap-2 bg-[#fdfaf0]">
-                          {PERMISSION_OPTIONS.map((opt) => (
-                            <label key={opt.id} className="flex items-center gap-2 text-[10px] font-bold text-[#111] cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={permissions.includes(opt.id)}
-                                onChange={() => togglePermission(opt.id)}
-                                className="accent-[#111] w-3.5 h-3.5"
-                              />
-                              <span className="truncate">{opt.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {error && (
-                      <p className="bg-red-100 border-[2px] border-red-600 text-red-800 text-[10px] p-2 rounded text-center my-2 font-bold shadow-[2px_2px_0_rgba(220,38,38,0.5)]">
-                        {error}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end gap-2 mt-4 pt-2 border-t border-stone-300">
-                      {isOpen && (
-                        <button
+                      
+                      <div className="flex gap-1 border-b-[2px] border-[#111] pb-2 mb-3">
+                        <button 
+                          className={`flex-1 text-[10px] font-black uppercase tracking-widest py-1 border-[2px] ${regMode === 'url' ? 'bg-[#111] text-white border-[#111]' : 'bg-[#fdfaf0] text-[#111] border-[#111]'}`}
+                          onClick={() => setRegMode("url")}
                           type="button"
-                          className="xp-btn text-[11px]"
-                          onClick={() => setIsOpen(false)}
                         >
-                          Close Cover
+                          🌐 Via URL
                         </button>
+                        <button 
+                          className={`flex-1 text-[10px] font-black uppercase tracking-widest py-1 border-[2px] ${regMode === 'manual' ? 'bg-[#111] text-white border-[#111]' : 'bg-[#fdfaf0] text-[#111] border-[#111]'}`}
+                          onClick={() => setRegMode("manual")}
+                          type="button"
+                        >
+                          ✍️ Manual
+                        </button>
+                      </div>
+
+                      {regMode === "url" ? (
+                        <form onSubmit={handleUrlSubmit} className="space-y-3">
+                          <p className="text-[11px] font-bold text-stone-700 leading-relaxed mb-3">
+                            Connect a live AI Agent endpoint. We will fetch its metadata (purpose, creator, and performance metrics) over HTTPS and assign a trust score automatically!
+                          </p>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
+                              Agent Endpoint URL
+                            </label>
+                            <input
+                              className="xp-input w-full py-1.5 text-xs font-bold text-[#1D3D7A] font-mono"
+                              value={agentUrl}
+                              onChange={(e) => setAgentUrl(e.target.value)}
+                              placeholder="http://localhost:4001/metadata"
+                            />
+                          </div>
+                          
+                          {error && (
+                            <p className="bg-red-100 border-[2px] border-red-600 text-red-800 text-[10px] p-2 rounded text-center my-2 font-bold shadow-[2px_2px_0_rgba(220,38,38,0.5)]">
+                              {error}
+                            </p>
+                          )}
+                          
+                          <div className="pt-4 flex justify-end gap-2">
+                             {isOpen && (
+                              <button type="button" className="xp-btn text-[11px]" onClick={() => setIsOpen(false)}>
+                                Close Cover
+                              </button>
+                            )}
+                            <button type="submit" disabled={loading} className="xp-btn xp-btn-primary text-[11px]">
+                              {loading ? "Fetching & Analyzing..." : "Fetch & Register →"}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleManualSubmit} className="space-y-3">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
+                              Agent Name
+                            </label>
+                            <input
+                              className="xp-input w-full py-1.5 text-xs font-bold text-[#111]"
+                              value={form.name}
+                              onChange={(e) => setForm({ ...form, name: e.target.value })}
+                              placeholder="e.g. ShoppingBot"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
+                              Creator
+                            </label>
+                            <input
+                              className="xp-input w-full py-1.5 text-xs font-bold text-[#111]"
+                              value={form.creator}
+                              onChange={(e) => setForm({ ...form, creator: e.target.value })}
+                              placeholder="e.g. Acme Corp"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
+                              Purpose
+                            </label>
+                            <textarea
+                              className="xp-input w-full py-1.5 text-xs leading-normal font-medium text-[#111] resize-none"
+                              rows={3}
+                              value={form.purpose}
+                              onChange={(e) => setForm({ ...form, purpose: e.target.value })}
+                              placeholder="Assists with shopping and Cart checkouts."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-stone-600 mb-1">
+                              Permissions
+                            </label>
+                            <div className="xp-panel p-3 grid grid-cols-2 gap-2 bg-[#fdfaf0]">
+                              {PERMISSION_OPTIONS.map((opt) => (
+                                <label key={opt.id} className="flex items-center gap-2 text-[10px] font-bold text-[#111] cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={permissions.includes(opt.id)}
+                                    onChange={() => togglePermission(opt.id)}
+                                    className="accent-[#111] w-3.5 h-3.5"
+                                  />
+                                  <span className="truncate">{opt.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          {error && (
+                            <p className="bg-red-100 border-[2px] border-red-600 text-red-800 text-[10px] p-2 rounded text-center my-2 font-bold shadow-[2px_2px_0_rgba(220,38,38,0.5)]">
+                              {error}
+                            </p>
+                          )}
+
+                          <div className="flex justify-end gap-2 mt-4 pt-2 border-t border-stone-300">
+                            {isOpen && (
+                              <button
+                                type="button"
+                                className="xp-btn text-[11px]"
+                                onClick={() => setIsOpen(false)}
+                              >
+                                Close Cover
+                              </button>
+                            )}
+                            <button
+                              type="submit"
+                              disabled={loading}
+                              className="xp-btn xp-btn-primary text-[11px]"
+                            >
+                              {loading ? "Registering..." : "Apply on-chain →"}
+                            </button>
+                          </div>
+                        </form>
                       )}
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="xp-btn xp-btn-primary text-[11px]"
-                      >
-                        {loading ? "Registering..." : "Apply on-chain →"}
-                      </button>
                     </div>
-                  </form>
+                  </div>
                 )}
               </div>
             </div>
