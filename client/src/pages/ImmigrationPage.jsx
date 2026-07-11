@@ -40,64 +40,63 @@ export default function ImmigrationPage({ agent, onDone }) {
         setError(err.message);
         setPhase("result");
       });
-  }, [website]);
+  }, [website, agent.id, onDone, navigate]);
 
   return (
     <XpWindow title="AgentPassport - Immigration Checkpoint" icon="👮">
-      <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div className="flex flex-col items-center justify-center py-12 text-center relative">
         {phase === "checking" && (
-          <>
-            <div className="xp-spinner mb-4" />
-            <p className="text-sm font-bold text-xpblue-dark">
+          <div className="flex flex-col items-center">
+            <div className="xp-spinner mb-6" style={{ width: 48, height: 48, borderWidth: 6 }} />
+            <p className="text-[16px] font-black text-[#1D3D7A] uppercase tracking-widest drop-shadow-[1px_1px_0_rgba(255,255,255,0.8)]">
               Immigration Officer is reviewing your passport...
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Checking identity, trust score, and entry requirements for {website}
+            <p className="text-[12px] text-stone-600 mt-2 font-bold bg-[#F5EDB9] px-4 py-2 border-[2px] border-[#111] shadow-[2px_2px_0_rgba(0,0,0,0.2)]">
+              Checking identity, trust score, and entry requirements for <span className="text-[#111]">{website}</span>
             </p>
-          </>
+          </div>
         )}
 
         <AnimatePresence>
           {phase === "result" && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.25 }}
-              className="xp-panel border-2 p-5 max-w-sm"
-              style={{
-                borderColor: error
-                  ? "#b91c1c"
-                  : result?.status === "approved"
-                  ? "#15803d"
-                  : "#b91c1c",
-              }}
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.4, type: "spring", bounce: 0.5 }}
+              className={`border-[4px] p-6 max-w-md w-full shadow-[6px_6px_0_rgba(0,0,0,0.5)] ${
+                error 
+                  ? "bg-[#fdf0f0] border-red-800" 
+                  : result?.status === "approved" 
+                  ? "bg-[#e6f4e6] border-green-800"
+                  : "bg-[#fdf0f0] border-red-800"
+              }`}
             >
               {error ? (
                 <>
-                  <p className="text-3xl">⚠️</p>
-                  <p className="font-bold text-red-700 mt-2">Error</p>
-                  <p className="text-xs mt-1">{error}</p>
+                  <p className="text-6xl drop-shadow-[2px_2px_0_#111]">⚠️</p>
+                  <p className="font-black text-red-800 text-[24px] mt-4 uppercase tracking-widest drop-shadow-[1px_1px_0_rgba(255,255,255,0.8)]">Error</p>
+                  <p className="text-[12px] mt-2 font-bold text-red-900 border-t-[2px] border-red-800 pt-3">{error}</p>
                 </>
               ) : result.status === "approved" ? (
                 <>
-                  <p className="text-3xl">✅</p>
-                  <p className="font-bold text-green-700 mt-2">Access Granted</p>
-                  <p className="text-xs mt-1">{result.reason}</p>
+                  <p className="text-6xl drop-shadow-[2px_2px_0_#111]">✅</p>
+                  <p className="font-black text-green-800 text-[24px] mt-4 uppercase tracking-widest drop-shadow-[1px_1px_0_rgba(255,255,255,0.8)]">Access Granted</p>
+                  <p className="text-[12px] mt-2 font-bold text-green-900 border-t-[2px] border-green-800 pt-3">{result.reason}</p>
                 </>
               ) : (
                 <>
-                  <p className="text-3xl">❌</p>
-                  <p className="font-bold text-red-700 mt-2">Access Denied</p>
-                  <p className="text-xs mt-1">{result.reason}</p>
+                  <p className="text-6xl drop-shadow-[2px_2px_0_#111]">❌</p>
+                  <p className="font-black text-red-800 text-[24px] mt-4 uppercase tracking-widest drop-shadow-[1px_1px_0_rgba(255,255,255,0.8)]">Access Denied</p>
+                  <p className="text-[12px] mt-2 font-bold text-red-900 border-t-[2px] border-red-800 pt-3">{result.reason}</p>
                 </>
               )}
 
-              <div className="flex justify-center gap-2 mt-4">
-                <button className="xp-btn" onClick={() => navigate("/visa")}>
+              <div className="flex justify-center gap-3 mt-6 border-t-[2px] border-[#111]/20 pt-4">
+                <button className="xp-btn text-[11px]" onClick={() => navigate("/visa")}>
                   Apply Elsewhere
                 </button>
                 <button
-                  className="xp-btn xp-btn-primary"
+                  className="xp-btn xp-btn-primary text-[11px]"
                   onClick={() => navigate(result?.status === "approved" ? "/stamps" : "/trust")}
                 >
                   {result?.status === "approved" ? "View Stamp →" : "View Trust Score →"}

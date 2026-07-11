@@ -1,19 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
 
 const links = [
-  { to: "/", label: "Register" },
-  { to: "/passport", label: "Passport" },
-  { to: "/visa", label: "Apply for Visa" },
-  { to: "/stamps", label: "Activity Log" },
-  { to: "/trust", label: "Trust Score" },
-  { to: "/blacklist", label: "Blacklist" },
+  { to: "/", label: "REGISTER", icon: "👤" },
+  { to: "/passport", label: "PASSPORT", icon: "🛂" },
+  { to: "/visa", label: "APPLY FOR VISA", icon: "📝" },
+  { to: "/stamps", label: "ACTIVITY LOG", icon: "📋" },
+  { to: "/trust", label: "TRUST SCORE", icon: "⭐" },
+  { to: "/blacklist", label: "BLACKLIST", icon: "⚠️" },
 ];
 
 export default function NavBar({ agentId }) {
   const loc = useLocation();
   return (
-    <div className="max-w-3xl w-full mx-auto mb-3 flex flex-wrap gap-1 text-xs">
-      {links.map((l) => {
+    <div className="w-full max-w-4xl mx-auto flex flex-wrap gap-0 text-[11px] uppercase font-bold justify-center px-4 relative z-10">
+      {links.map((l, idx) => {
         const exempt = l.to === "/" || l.to === "/blacklist";
         const disabled = !exempt && !agentId;
         const active = loc.pathname === l.to;
@@ -22,15 +22,16 @@ export default function NavBar({ agentId }) {
             key={l.to}
             to={disabled ? "#" : l.to}
             onClick={(e) => disabled && e.preventDefault()}
-            className={`px-3 py-1 rounded-t border border-b-0 font-bold ${
+            className={`px-4 py-2 flex items-center gap-2 border-[3px] border-[#111] ${idx !== 0 ? 'ml-[-3px]' : ''} ${
               active
-                ? "bg-xpface border-xpblue-dark text-xpblue-dark"
+                ? "bg-[#FCD86C] text-[#111] z-10 shadow-[2px_-2px_0px_rgba(0,0,0,0.5)] transform -translate-y-1"
                 : disabled
-                ? "bg-xpblue-dark/40 border-transparent text-white/50 cursor-not-allowed"
-                : "bg-xpblue-light/70 border-transparent text-white hover:bg-xpblue-light"
+                ? "bg-[#D9D1A2] text-[#111]/40 cursor-not-allowed opacity-80"
+                : "bg-[#F5EDB9] text-[#111] hover:bg-[#FCD86C] hover:z-10 hover:-translate-y-0.5 transition-transform"
             }`}
           >
-            {l.label}
+            <span className="text-sm drop-shadow-[1px_1px_0_rgba(255,255,255,0.5)]">{l.icon}</span>
+            <span className={active ? "drop-shadow-[1px_1px_0_rgba(255,255,255,0.5)]" : ""}>{l.label}</span>
           </Link>
         );
       })}
