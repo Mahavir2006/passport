@@ -9,7 +9,7 @@ const PERMISSION_OPTIONS = [
   { id: "post_content", label: "Post Content" },
   { id: "read_data", label: "Read Data" },
   { id: "delete_data", label: "Delete Data" },
-  { id: "admin_access", label: "Admin Access" },
+  { id: "add_to_cart", label: "Add to Cart" },
 ];
 
 export default function RegisterPage({ onRegistered }) {

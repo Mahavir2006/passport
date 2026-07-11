@@ -120,7 +120,7 @@ function heuristicAnalysis({ name, purpose, requestedPermissions, performanceMet
   trustScore = Math.max(0, Math.min(100, trustScore + nudge - 5));
 
   // Trims anything that looks dangerous when risk is high.
-  const dangerousPerms = ["delete_data", "make_payments", "admin_access"];
+  const dangerousPerms = ["delete_data", "make_payments", "add_to_cart"];
   const grantedPermissions = requestedPermissions.filter((perm) => {
     if (riskLevel === "high" && dangerousPerms.includes(perm)) return false;
     return true;
@@ -131,8 +131,8 @@ function heuristicAnalysis({ name, purpose, requestedPermissions, performanceMet
   const reasoning = isRisky
     ? "Purpose or metrics contain high-risk indicators (e.g. malicious attempts). Recommend limited permissions."
     : isTrusted
-    ? "Purpose and metrics align with common trusted agent use cases. Recommend standard permissions."
-    : "Purpose statement is ambiguous. Recommend moderate trust with restricted spending.";
+      ? "Purpose and metrics align with common trusted agent use cases. Recommend standard permissions."
+      : "Purpose statement is ambiguous. Recommend moderate trust with restricted spending.";
 
   return { riskLevel, trustScore, grantedPermissions, spendingLimit, reasoning };
 }

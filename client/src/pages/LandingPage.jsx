@@ -8,7 +8,7 @@ const PERMISSION_OPTIONS = [
   { id: "post_content", label: "Post Content" },
   { id: "read_data", label: "Read Data" },
   { id: "delete_data", label: "Delete Data" },
-  { id: "admin_access", label: "Admin Access" },
+  { id: "add_to_cart", label: "Add to Cart" },
 ];
 
 export default function LandingPage({ agent, onRegistered }) {
@@ -18,7 +18,7 @@ export default function LandingPage({ agent, onRegistered }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   const [regMode, setRegMode] = useState("url"); // "url" | "manual"
   const [agentUrl, setAgentUrl] = useState("http://localhost:4001/metadata");
 
@@ -65,7 +65,7 @@ export default function LandingPage({ agent, onRegistered }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to register via URL.");
-      
+
       onRegistered(data.agent);
     } catch (err) {
       setError(err.message);
@@ -78,14 +78,14 @@ export default function LandingPage({ agent, onRegistered }) {
     <div className="w-full flex justify-between items-start gap-8 h-full pt-4">
       {/* Left Sticky Note */}
       <div className="hidden lg:block w-52 mt-8 sticky-note z-10 font-sans">
-         <div className="pin"></div>
-         <h3 className="font-black text-[13px] flex items-center gap-1.5 mb-3 text-[#1D3D7A] uppercase tracking-wide">
-           <span className="text-lg">📢</span> WELCOME!
-         </h3>
-         <p className="text-[12px] leading-relaxed text-[#111] font-semibold">
-           Welcome to the Agent Passport Office.<br/><br/>
-           Click the passport to flip it open. Complete your details on-chain to register your agent.
-         </p>
+        <div className="pin"></div>
+        <h3 className="font-black text-[13px] flex items-center gap-1.5 mb-3 text-[#1D3D7A] uppercase tracking-wide">
+          <span className="text-lg">📢</span> WELCOME!
+        </h3>
+        <p className="text-[12px] leading-relaxed text-[#111] font-semibold">
+          Welcome to the Agent Passport Office.<br /><br />
+          Click the passport to flip it open. Complete your details on-chain to register your agent.
+        </p>
       </div>
 
       {/* Center Passport */}
@@ -138,7 +138,7 @@ export default function LandingPage({ agent, onRegistered }) {
                       पासपोर्ट
                     </h3>
                     <div className="w-8 h-6 border-2 border-[#d4af37] mx-auto mt-4 rounded-sm flex items-center justify-center opacity-80">
-                       <div className="w-3 h-3 bg-[#d4af37] rounded-full"></div>
+                      <div className="w-3 h-3 bg-[#d4af37] rounded-full"></div>
                     </div>
                   </div>
                 </div>
@@ -160,11 +160,11 @@ export default function LandingPage({ agent, onRegistered }) {
                   <div className="mt-8 text-center space-y-2 relative">
                     {/* Stamp */}
                     <div className="absolute -left-2 -top-12 opacity-20 transform -rotate-12 pointer-events-none">
-                       <div className="w-24 h-24 rounded-full border-[3px] border-blue-800 flex items-center justify-center">
-                         <div className="text-center text-blue-800 font-black text-[9px] uppercase tracking-widest">
-                            Official<br/>Immigration<br/>Seal
-                         </div>
-                       </div>
+                      <div className="w-24 h-24 rounded-full border-[3px] border-blue-800 flex items-center justify-center">
+                        <div className="text-center text-blue-800 font-black text-[9px] uppercase tracking-widest">
+                          Official<br />Immigration<br />Seal
+                        </div>
+                      </div>
                     </div>
                     <div className="font-mono italic text-[#2563eb] text-lg transform -rotate-6 select-none opacity-80">
                       Immigration Officer
@@ -177,7 +177,7 @@ export default function LandingPage({ agent, onRegistered }) {
               </div>
 
               {/* Right Inner Page (Registration Form / Details Page) */}
-              <div 
+              <div
                 className="passport-page-right passport-watermark p-6 flex flex-col justify-between font-sans text-xs"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -275,16 +275,16 @@ export default function LandingPage({ agent, onRegistered }) {
                   // Case B: No Agent - Show Registration Form
                   <div className="h-full flex flex-col justify-between py-1">
                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      
+
                       <div className="flex gap-1 border-b-[2px] border-[#111] pb-2 mb-3">
-                        <button 
+                        <button
                           className={`flex-1 text-[10px] font-black uppercase tracking-widest py-1 border-[2px] ${regMode === 'url' ? 'bg-[#111] text-white border-[#111]' : 'bg-[#fdfaf0] text-[#111] border-[#111]'}`}
                           onClick={() => setRegMode("url")}
                           type="button"
                         >
                           🌐 Via URL
                         </button>
-                        <button 
+                        <button
                           className={`flex-1 text-[10px] font-black uppercase tracking-widest py-1 border-[2px] ${regMode === 'manual' ? 'bg-[#111] text-white border-[#111]' : 'bg-[#fdfaf0] text-[#111] border-[#111]'}`}
                           onClick={() => setRegMode("manual")}
                           type="button"
@@ -309,15 +309,15 @@ export default function LandingPage({ agent, onRegistered }) {
                               placeholder="http://localhost:4001/metadata"
                             />
                           </div>
-                          
+
                           {error && (
                             <p className="bg-red-100 border-[2px] border-red-600 text-red-800 text-[10px] p-2 rounded text-center my-2 font-bold shadow-[2px_2px_0_rgba(220,38,38,0.5)]">
                               {error}
                             </p>
                           )}
-                          
+
                           <div className="pt-4 flex justify-end gap-2">
-                             {isOpen && (
+                            {isOpen && (
                               <button type="button" className="xp-btn text-[11px]" onClick={() => setIsOpen(false)}>
                                 Close Cover
                               </button>
@@ -422,23 +422,23 @@ export default function LandingPage({ agent, onRegistered }) {
 
       {/* Right Announcements */}
       <div className="hidden lg:block w-64 mt-8 bg-[#F5EDB9] border-[3px] border-[#111] p-5 shadow-[4px_4px_0_rgba(0,0,0,0.5)] z-10 font-sans">
-         <h3 className="font-black text-[12px] bg-[#BFA8EA] border-[3px] border-[#111] p-1.5 mb-5 text-center uppercase tracking-widest text-[#111] shadow-[2px_2px_0_#111]">
-           ⭐ Announcements
-         </h3>
-         <ul className="text-[11px] space-y-5">
-           <li className="relative pl-4">
-             <span className="absolute left-0 top-1.5 w-2 h-2 bg-[#111] rounded-full"></span>
-             <strong className="block uppercase text-[#1D3D7A] font-black text-[12px]">New Visa Protocol</strong>
-             v2.0 is now live!<br/>
-             <span className="text-[#111] font-bold opacity-70">[ 05 / 05 / 2006 ]</span>
-           </li>
-           <li className="relative pl-4">
-             <span className="absolute left-0 top-1.5 w-2 h-2 bg-[#111] rounded-full"></span>
-             <strong className="block uppercase text-[#1D3D7A] font-black text-[12px]">Agent Summit 2006</strong>
-             Join us in New Tokyo.<br/>
-             <span className="text-[#111] font-bold opacity-70">[ 12 / 06 / 2006 ]</span>
-           </li>
-         </ul>
+        <h3 className="font-black text-[12px] bg-[#BFA8EA] border-[3px] border-[#111] p-1.5 mb-5 text-center uppercase tracking-widest text-[#111] shadow-[2px_2px_0_#111]">
+          ⭐ Announcements
+        </h3>
+        <ul className="text-[11px] space-y-5">
+          <li className="relative pl-4">
+            <span className="absolute left-0 top-1.5 w-2 h-2 bg-[#111] rounded-full"></span>
+            <strong className="block uppercase text-[#1D3D7A] font-black text-[12px]">New Visa Protocol</strong>
+            v2.0 is now live!<br />
+            <span className="text-[#111] font-bold opacity-70">[ 05 / 05 / 2006 ]</span>
+          </li>
+          <li className="relative pl-4">
+            <span className="absolute left-0 top-1.5 w-2 h-2 bg-[#111] rounded-full"></span>
+            <strong className="block uppercase text-[#1D3D7A] font-black text-[12px]">Agent Summit 2006</strong>
+            Join us in New Tokyo.<br />
+            <span className="text-[#111] font-bold opacity-70">[ 12 / 06 / 2006 ]</span>
+          </li>
+        </ul>
       </div>
     </div>
   );
