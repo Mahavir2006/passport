@@ -199,11 +199,17 @@ function HRule() {
   );
 }
 
-/* ─── Login panel ────────────────────────────────────────────────────────── */
+/* ─── Login / Register tabbed panel ─────────────────────────────────────── */
 function LoginPanel({ navigate }) {
-  const [user, setUser]   = useState("");
-  const [pass, setPass]   = useState("");
-  const [error, setError] = useState("");
+  const [tab,      setTab]      = useState("login");     // "login" | "register"
+  const [name,     setName]     = useState("");
+  const [username, setUsername] = useState("");
+  const [pass,     setPass]     = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+
+  function reset() { setName(""); setUsername(""); setPass(""); setError(""); }
+  function switchTab(t) { reset(); setTab(t); }
 
   const inputStyle = {
     ...sunken,
@@ -228,18 +234,65 @@ function LoginPanel({ navigate }) {
     letterSpacing: 1,
   };
 
-  function handleLogin() {
-    if (!user.trim() || !pass.trim()) {
+  async function handleLogin() {
+    if (!username.trim() || !pass.trim()) {
       setError("⚠ Username and Password cannot be empty.");
       return;
     }
-    setError("");
-    navigate("/home");
+    setError(""); setLoading(true);
+    try {
+      const { loginUser } = await import("../lib/auth.js");
+      const { user } = await loginUser({ username: username.trim(), password: pass });
+      sessionStorage.setItem("authUser", JSON.stringify(user));
+      navigate("/home");
+    } catch (e) {
+      setError("⚠ " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegister() {
+    if (!name.trim() || !username.trim() || !pass.trim()) {
+      setError("⚠ All fields are required.");
+      return;
+    }
+    setError(""); setLoading(true);
+    try {
+      const { registerUser } = await import("../lib/auth.js");
+      const { user } = await registerUser({ name: name.trim(), username: username.trim(), password: pass });
+      sessionStorage.setItem("authUser", JSON.stringify(user));
+      navigate("/home");
+    } catch (e) {
+      setError("⚠ " + e.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleKey(e) {
-    if (e.key === "Enter") handleLogin();
+    if (e.key === "Enter") tab === "login" ? handleLogin() : handleRegister();
   }
+
+  /* Tab button style */
+  const tabBtn = (active) => ({
+    ...raised,
+    background: active ? W95.SUNKEN_BG : W95.FACE,
+    color: active ? "#000080" : W95.BTNTEXT,
+    fontFamily: "MS Sans Serif, Tahoma, Arial, sans-serif",
+    fontSize: 14,
+    fontWeight: "bold",
+    cursor: "pointer",
+    padding: "5px 18px",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    userSelect: "none",
+    border: "none",
+    borderBottom: active ? `2px solid ${W95.SUNKEN_BG}` : "none",
+    marginBottom: active ? -2 : 0,
+    zIndex: active ? 2 : 1,
+    position: "relative",
+  });
 
   return (
     <div
@@ -247,7 +300,7 @@ function LoginPanel({ navigate }) {
         ...raised,
         background: W95.FACE,
         flexShrink: 0,
-        width: 280,
+        width: 300,
         display: "flex",
         flexDirection: "column",
       }}
@@ -267,18 +320,41 @@ function LoginPanel({ navigate }) {
           gap: 8,
         }}
       >
-        <span style={{ fontSize: 18 }}>🔐</span> SIGN IN
+        <span style={{ fontSize: 18 }}>🔐</span> AGENT PORTAL
       </div>
 
+      {/* Tab row */}
+      <div style={{ display: "flex", padding: "8px 8px 0", borderBottom: `2px solid ${W95.SHADOW}`, gap: 4 }}>
+        <button style={tabBtn(tab === "login")}    onClick={() => switchTab("login")}>Login</button>
+        <button style={tabBtn(tab === "register")} onClick={() => switchTab("register")}>Register</button>
+      </div>
+
+      {/* Tab body */}
       <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
 
-        {/* Decorative user icon */}
-        <div style={{ textAlign: "center", marginBottom: 4 }}>
-          <span style={{ fontSize: 52 }}>👤</span>
+        {/* User icon */}
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontSize: 48 }}>{tab === "login" ? "👤" : "📝"}</span>
           <div style={{ fontSize: 13, color: W95.SHADOW, fontFamily: "MS Sans Serif, Tahoma, Arial, sans-serif", marginTop: 4 }}>
-            Agent Portal Login
+            {tab === "login" ? "Sign in to your account" : "Create a new account"}
           </div>
         </div>
+
+        {/* Name field — register only */}
+        {tab === "register" && (
+          <div>
+            <label style={labelStyle}>Full Name</label>
+            <input
+              style={inputStyle}
+              type="text"
+              value={name}
+              placeholder="e.g. John Smith"
+              onChange={(e) => { setName(e.target.value); setError(""); }}
+              onKeyDown={handleKey}
+              autoComplete="off"
+            />
+          </div>
+        )}
 
         {/* Username */}
         <div>
@@ -286,9 +362,9 @@ function LoginPanel({ navigate }) {
           <input
             style={inputStyle}
             type="text"
-            value={user}
+            value={username}
             placeholder="Enter username"
-            onChange={(e) => { setUser(e.target.value); setError(""); }}
+            onChange={(e) => { setUsername(e.target.value); setError(""); }}
             onKeyDown={handleKey}
             autoComplete="off"
           />
@@ -307,12 +383,12 @@ function LoginPanel({ navigate }) {
           />
         </div>
 
-        {/* Error message — sunken box, only shown when non-empty */}
+        {/* Error */}
         {error && (
           <div
             style={{
               ...sunken,
-              background: "#ffffff",
+              background: "#fff8f8",
               padding: "6px 10px",
               fontSize: 13,
               color: "#800000",
@@ -324,26 +400,25 @@ function LoginPanel({ navigate }) {
           </div>
         )}
 
-        {/* Buttons */}
+        {/* Action buttons */}
         <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
           <Win95Btn
             primary
             big
             style={{ flex: 1, justifyContent: "center" }}
-            onClick={handleLogin}
+            onClick={tab === "login" ? handleLogin : handleRegister}
           >
-            OK
+            {loading ? "..." : tab === "login" ? "OK" : "Register"}
           </Win95Btn>
           <Win95Btn
             big
             style={{ flex: 1, justifyContent: "center" }}
-            onClick={() => { setUser(""); setPass(""); setError(""); }}
+            onClick={reset}
           >
             Cancel
           </Win95Btn>
         </div>
 
-        {/* Fine print */}
         <div style={{ fontSize: 11, color: W95.SHADOW, fontFamily: "MS Sans Serif, Tahoma, Arial, sans-serif", textAlign: "center", lineHeight: 1.5 }}>
           Authorised users only.<br />Unauthorised access is prohibited.
         </div>
@@ -462,9 +537,9 @@ export default function LandinCoverPage() {
         }}
       >
         {/* ── HERO WINDOW ── */}
-        <div className="w-full max-w-2xl bg-[#c0c0c0] border-[3px] border-[#dfdfdf] border-r-[#404040] border-b-[#404040] shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
-          <Win95TitleBar icon="" title="AgentPassport.exe — Welcome" />
-          <div className="p-1 border-[3px] border-[#404040] border-r-[#dfdfdf] border-b-[#dfdfdf] bg-[#ece9d8]">
+        <div style={{ ...windowChrome, width: "100%", maxWidth: 1100, overflow: "hidden" }}>
+          <Win95TitleBar icon="🛂" title="AgentPassport.exe — Welcome" />
+          <div style={{ background: W95.FACE }}>
             {/* Menu bar */}
             <div
               style={{
@@ -489,7 +564,7 @@ export default function LandinCoverPage() {
             </div>
 
             {/* Hero body — 3 columns: icon | description | login */}
-            <div style={{ padding: 24, display: "flex", gap: 24, alignItems: "stretch" }}>
+            <div style={{ padding: 24, display: "flex", gap: 24, alignItems: "flex-start" }}>
 
               {/* ① Icon panel */}
               <div
@@ -506,8 +581,7 @@ export default function LandinCoverPage() {
                   flexShrink: 0,
                 }}
               >
-                <div className="flex justify-center mb-6 drop-shadow-[4px_4px_0_rgba(0,0,0,0.3)] transform -rotate-2">
-                </div>
+                <span style={{ fontSize: 88, lineHeight: 1 }}>🛂</span>
                 <div style={{ color: "#ffff00", fontWeight: "bold", fontSize: 18, textAlign: "center", textShadow: "1px 1px 0 #000", letterSpacing: 2 }}>
                   AGENT<br />PASSPORT
                 </div>
@@ -519,7 +593,7 @@ export default function LandinCoverPage() {
               {/* ② Description */}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 30, fontWeight: "bold", color: "#000080", marginBottom: 6, letterSpacing: 2, textTransform: "uppercase", textShadow: `1px 1px 0 ${W95.SHADOW}` }}>
-                  AgentPassport
+                  🌐 AgentPassport
                 </div>
                 <div style={{ fontSize: 17, color: "#800000", fontWeight: "bold", marginBottom: 14, letterSpacing: 1 }}>
                   ★ Immigration Services for AI Agents ★
@@ -547,16 +621,16 @@ export default function LandinCoverPage() {
 
             {/* Status bar */}
             <div style={{ borderTop: `1px solid ${W95.SHADOW}`, padding: "4px 12px", display: "flex", gap: 10, fontSize: 14 }}>
-              <div style={{ ...sunken, padding: "2px 12px", flex: 2 }}>Blockchain node connected — Hardhat localhost:8545</div>
+              <div style={{ ...sunken, padding: "2px 12px", flex: 2 }}>✅ Blockchain node connected — Hardhat localhost:8545</div>
               <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>Agents registered: 18,593</div>
-              <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>128-bit encryption</div>
+              <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>🔒 128-bit encryption</div>
             </div>
           </div>
         </div>
 
         {/* ── FEATURES WINDOW ── */}
         <div style={{ ...windowChrome, width: "100%", maxWidth: 1100 }}>
-          <Win95TitleBar icon="" title="Features — AgentPassport" />
+          <Win95TitleBar icon="📦" title="Features — AgentPassport" />
 
           <div style={{ padding: 18 }}>
             <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 14, color: "#000080", textTransform: "uppercase", letterSpacing: 1 }}>
@@ -564,23 +638,23 @@ export default function LandinCoverPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-              <FeatureCard icon="" title="Agent Registration"
+              <FeatureCard icon="🪪" title="Agent Registration"
                 desc="Register any AI agent with name, creator, purpose and requested permissions. Receive a unique on-chain passport ID (AGT-XXXXXXXX)." />
-              <FeatureCard icon="" title="AI Risk Assessment"
+              <FeatureCard icon="🤖" title="AI Risk Assessment"
                 desc="Groq LLM (llama-3.3-70b) analyzes each agent's stated purpose and assigns a trust score (0–100), risk level, and spending limit." />
-              <FeatureCard icon="" title="Digital Passport"
+              <FeatureCard icon="📜" title="Digital Passport"
                 desc="Every agent gets a permanent on-chain ID card: verification status, trust score, granted permissions, spending limit and issuance timestamp." />
-              <FeatureCard icon="" title="Visa Applications"
+              <FeatureCard icon="✈" title="Visa Applications"
                 desc="Agents apply for visas to enter 4 demo sites: ShopSite.com, SocialHub.com, DataVault.com, NewsWire.com — each with trust score thresholds." />
-              <FeatureCard icon="" title="Immigration Checkpoint"
-                desc="A border-check simulation with a rule engine. Returns Access Granted or Access Denied with the full reasoning on-chain." />
-              <FeatureCard icon="" title="Activity Stamps"
+              <FeatureCard icon="🛃" title="Immigration Checkpoint"
+                desc="A border-check simulation with a rule engine. Returns Access Granted ✅ or Access Denied ❌ with the full reasoning on-chain." />
+              <FeatureCard icon="🗂" title="Activity Stamps"
                 desc="Every approved entry mints an on-chain stamp. The activity log shows your full visa history, approvals, denials and timestamps." />
-              <FeatureCard icon="" title="Trust Score Dashboard"
+              <FeatureCard icon="📊" title="Trust Score Dashboard"
                 desc="Live trust bar with colour coding. Dev controls simulate good (+15), bad (−15) and malicious (−50) behaviour — all written on-chain." />
-              <FeatureCard icon="" title="Blacklist Database"
+              <FeatureCard icon="🚫" title="Blacklist Database"
                 desc="Admins add watchlist entries by agent name or creator. Any matching registered agent is instantly blacklisted and denied all visas." />
-              <FeatureCard icon="" title="On-Chain Transparency"
+              <FeatureCard icon="🔗" title="On-Chain Transparency"
                 desc="Every action — registration, trust update, visa, stamp — emits a Solidity event and returns a tx hash shown as a notification banner." />
             </div>
           </div>
