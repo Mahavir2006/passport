@@ -23,7 +23,6 @@ export default function ImmigrationPage({ agent, onDone }) {
     if (requestedRef.current) return;
     requestedRef.current = true;
 
-    let cancelled = false;
     const minSpinnerMs = 1400;
     const start = Date.now();
 
@@ -33,20 +32,14 @@ export default function ImmigrationPage({ agent, onDone }) {
         const elapsed = Date.now() - start;
         const wait = Math.max(0, minSpinnerMs - elapsed);
         await new Promise((r) => setTimeout(r, wait));
-        if (cancelled) return;
         setResult(res);
         setPhase("result");
         onDone && onDone();
       })
       .catch((err) => {
-        if (cancelled) return;
         setError(err.message);
         setPhase("result");
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [website]);
 
   return (

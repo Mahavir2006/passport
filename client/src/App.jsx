@@ -23,9 +23,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (agentId) {
+    if (agentId && agentId !== "undefined") {
       localStorage.setItem("agentId", agentId);
-      api.getAgent(agentId).then(setAgent).catch(() => {});
+      api.getAgent(agentId).then(setAgent).catch(() => {
+        localStorage.removeItem("agentId");
+        setAgentId(null);
+      });
     } else {
       localStorage.removeItem("agentId");
     }
