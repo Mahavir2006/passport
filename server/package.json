@@ -12,7 +12,9 @@
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
     "express": "^4.19.2",
-    "nanoid": "^5.0.7"
+    "nanoid": "^5.0.7",
+    "playwright": "^1.61.1",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^7.0.0",

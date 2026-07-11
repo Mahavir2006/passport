@@ -17,6 +17,8 @@ import {
   nowIso
 } from "../db.js";
 import { analyzeAgentPurpose } from "../ai.js";
+import { saveCredentials, getCredentials } from "../credentialsStore.js";
+import { runAgentTask } from "../agent-runner.js";
 
 export const agentsRouter = Router();
 
@@ -43,18 +45,84 @@ agentsRouter.get("/websites", (req, res) => {
   res.json(Object.values(WEBSITES));
 });
 
-// POST /api/agents/visit — agent visits a custom URL, confirms reachability
+// POST /api/agents/visit — launches Playwright to click "Login with Agent" and add to cart
 agentsRouter.post("/visit", async (req, res) => {
   const { url, agentId } = req.body;
   if (!url) return res.status(400).json({ error: "url is required" });
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      signal: AbortSignal.timeout(8000),
-      headers: { "User-Agent": `AgentPassport-Agent/${agentId || "unknown"}` },
-    });
-    res.json({ reached: true, status: response.status, url });
+    const { chromium } = await import("playwright");
+
+    // Fetch agent details to include in the verify-visa call so rift can log them
+    let agentDetails = null;
+    if (agentId) {
+      try {
+        const row = await getAgent(agentId);
+        if (row) {
+          const a = {
+            ...row,
+            requestedPermissions: JSON.parse(row.requestedPermissions || "[]"),
+            grantedPermissions:   JSON.parse(row.grantedPermissions   || "[]"),
+          };
+          agentDetails = {
+            agentId:     a.id,
+            agentName:   a.name,
+            creator:     a.creator,
+            purpose:     a.purpose,
+            trustScore:  a.trustScore,
+            riskLevel:   a.riskLevel,
+            grantedPermissions: a.grantedPermissions,
+          };
+        }
+      } catch (_) { /* non-fatal — proceed without details */ }
+    }
+
+    const browser = await chromium.launch({ headless: false, slowMo: 400 });
+    const page = await browser.newPage();
+
+    // Intercept the /api/verify-visa request the rift page fires and inject agentDetails
+    // This is the key wire: rift's verify-visa handler now receives the passport JSON
+    if (agentDetails) {
+      await page.route("**/api/verify-visa", async (route) => {
+        const originalRequest = route.request();
+        let originalBody = {};
+        try {
+          originalBody = JSON.parse(originalRequest.postData() || "{}");
+        } catch (_) {}
+
+        await route.continue({
+          method: "POST",
+          headers: { ...originalRequest.headers(), "content-type": "application/json" },
+          postData: JSON.stringify({ ...originalBody, agentDetails }),
+        });
+      });
+    }
+
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
+
+    // Click the "Login with Agent" button
+    await page.click('button:has-text("Login with Agent"), a:has-text("Login with Agent")', { timeout: 8000 });
+
+    // Wait for cart confirmation or post-login page
+    let cartMessage = "Agent logged in and acted on " + new URL(url).hostname;
+    try {
+      await page.waitForSelector(
+        '[data-testid="cart-toast"], .cart-toast, [data-testid="add-to-cart-btn"]',
+        { timeout: 12000 }
+      );
+      const el = await page.$('[data-testid="cart-toast"], .cart-toast');
+      if (el) cartMessage = (await el.textContent()).trim() || cartMessage;
+      else cartMessage = "Item added to cart on " + new URL(url).hostname;
+    } catch {
+      // Likely redirected to /shop or another page — that's still a success
+      const finalUrl = page.url();
+      if (finalUrl.includes("/shop")) {
+        cartMessage = "Agent successfully logged in — now on shop page";
+      }
+    }
+
+    await browser.close();
+    res.json({ reached: true, cartMessage, url });
   } catch (err) {
     res.json({ reached: false, error: err.message, url });
   }
@@ -155,6 +223,13 @@ agentsRouter.post("/", async (req, res) => {
       verificationStatus,
       createdAt
     });
+
+    // HACKATHON SHORTCUT: store credentials off-chain, in-memory only.
+    // These are never written to the blockchain. See credentialsStore.js.
+    const { username, password } = req.body;
+    if (username && password) {
+      saveCredentials(id, username, password);
+    }
 
     res.status(201).json({
       agent: serializeAgent(registered),
@@ -370,6 +445,134 @@ agentsRouter.post("/:id/simulate-behavior", async (req, res) => {
 
     const updated = await getAgent(row.id);
     res.json({ ...serializeAgent(updated), txHash });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/agents/:id/verify-visa — called by mock-agent /login-agent to decide entry
+// Returns the passport decision + linked credentials (server-to-server only, never exposed to browser clients)
+agentsRouter.post("/:id/verify-visa", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
+
+    const { websiteRules } = req.body;
+    const agent = serializeAgent(row);
+    const minTrust = websiteRules?.minTrustScore ?? 0;
+
+    const blacklistMatch = await findBlacklistMatch(agent.name, agent.creator);
+    if (agent.verificationStatus === "blacklisted" || blacklistMatch) {
+      return res.json({ decision: "denied", reason: "Agent is blacklisted." });
+    }
+
+    if (agent.trustScore < minTrust) {
+      return res.json({
+        decision: "denied",
+        reason: `Trust score ${agent.trustScore} is below required minimum (${minTrust}).`,
+      });
+    }
+
+    // HACKATHON SHORTCUT: credentials are in-memory only, never on-chain.
+    const creds = getCredentials(agent.id);
+
+    res.json({
+      decision: "approved",
+      grantedPermissions: agent.grantedPermissions,
+      // Only returned server-to-server for mock-agent use — never forwarded to the browser
+      linkedUsername: creds?.username || null,
+      linkedPassword: creds?.password || null,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/agents/:id/dispatch — launch a Playwright agent task against a target URL
+// Returns a dispatchSessionId the client can join via Socket.io to get live updates
+agentsRouter.post("/:id/dispatch", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
+
+    const {
+      targetUrl,
+      // Optional credential-login params — if omitted, uses /login-agent protocol
+      loginPagePath,
+      usernameSelector,
+      passwordSelector,
+      submitSelector,
+      postLoginSelector,
+    } = req.body;
+
+    if (!targetUrl) {
+      return res.status(400).json({ error: "targetUrl is required" });
+    }
+
+    const agent = serializeAgent(row);
+    const dispatchSessionId = `sess_${Date.now()}_${nanoid(8)}`;
+
+    // Fire-and-forget: agent task runs async, emits Socket.io events
+    runAgentTask({
+      passportId: agent.id,
+      targetUrl,
+      purpose: agent.purpose,
+      grantedPermissions: agent.grantedPermissions,
+      dispatchSessionId,
+      // Credential login fields (all optional — undefined = use /login-agent protocol)
+      loginPagePath,
+      usernameSelector,
+      passwordSelector,
+      submitSelector,
+      postLoginSelector,
+    }).then(async (result) => {
+      // On success, write a stamp on-chain
+      if (result.success) {
+        try {
+          await addStamp({
+            id: `STP-${nanoid(8).toUpperCase()}`,
+            agentId: agent.id,
+            website: new URL(targetUrl).hostname,
+            action: `Task completed: added "${result.item}" to cart ($${result.price})`,
+            timestamp: nowIso(),
+          });
+          // Reward good behavior with a small trust bump
+          const newScore = Math.min(100, agent.trustScore + 2);
+          await updateTrustScore(agent.id, newScore, `Successful task at ${targetUrl}`);
+        } catch (stampErr) {
+          console.error("Failed to write stamp after task:", stampErr.message);
+        }
+      }
+    }).catch((err) => {
+      console.error("runAgentTask error:", err.message);
+    });
+
+    res.json({ dispatchSessionId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/agents/:id/task-result — explicit result report (optional, used by mock-agent callback)
+agentsRouter.post("/:id/task-result", async (req, res) => {
+  try {
+    const row = await getAgentOr404(req, res);
+    if (!row) return;
+
+    const { status, item, targetUrl } = req.body;
+    const agent = serializeAgent(row);
+
+    if (status === "success" && item) {
+      await addStamp({
+        id: `STP-${nanoid(8).toUpperCase()}`,
+        agentId: agent.id,
+        website: targetUrl ? new URL(targetUrl).hostname : "unknown",
+        action: `Task result: ${status} — item: ${item}`,
+        timestamp: nowIso(),
+      });
+    }
+
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

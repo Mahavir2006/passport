@@ -49,4 +49,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }).then(handle),
+
+  // Dispatch a Playwright agent task against a target URL.
+  // body can include { targetUrl, loginPagePath, usernameSelector, passwordSelector, ... }
+  // Returns { dispatchSessionId } — connect Socket.io to this session for live updates.
+  dispatchAgentTask: (id, body) =>
+    fetch(`${BASE}/${id}/dispatch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(typeof body === "string" ? { targetUrl: body } : body),
+    }).then(handle),
 };
