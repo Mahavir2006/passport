@@ -167,6 +167,77 @@ agentsRouter.post("/", async (req, res) => {
   }
 });
 
+// POST /api/agents/register-url — fetch metadata from a real agent URL and register
+agentsRouter.post("/register-url", async (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: "Agent URL is required" });
+  }
+
+  try {
+    // 1. Fetch metadata from the real AI agent's endpoint
+    const response = await fetch(url, {
+      method: "GET",
+      signal: AbortSignal.timeout(8000)
+    });
+    
+    if (!response.ok) {
+      return res.status(400).json({ error: `Failed to fetch from agent URL. Status: ${response.status}` });
+    }
+
+    const metadata = await response.json();
+    const { name, creator, purpose, requestedPermissions, performanceMetrics } = metadata;
+
+    if (!name || !creator || !purpose) {
+      return res.status(400).json({ error: "Fetched metadata is missing name, creator, or purpose." });
+    }
+
+    // 2. Analyze using ai.js, now passing performanceMetrics!
+    const perms = Array.isArray(requestedPermissions) ? requestedPermissions : [];
+    const analysis = await analyzeAgentPurpose({ name, creator, purpose, requestedPermissions: perms, performanceMetrics });
+
+    const id = `AGT-${nanoid(8).toUpperCase()}`;
+    const createdAt = nowIso();
+
+    const blacklistMatch = await findBlacklistMatch(name, creator);
+
+    let verificationStatus = analysis.riskLevel === "high" ? "pending" : "verified";
+    let trustScore = analysis.trustScore;
+    let grantedPermissions = analysis.grantedPermissions;
+
+    if (blacklistMatch) {
+      verificationStatus = "blacklisted";
+      trustScore = Math.min(trustScore, 5);
+      grantedPermissions = [];
+    }
+
+    // 3. Register on blockchain
+    const registered = await registerAgent({
+      id,
+      name,
+      creator,
+      purpose,
+      requestedPermissions: perms,
+      grantedPermissions,
+      riskLevel: analysis.riskLevel,
+      trustScore,
+      spendingLimit: blacklistMatch ? 0 : analysis.spendingLimit,
+      verificationStatus,
+      createdAt
+    });
+
+    res.status(201).json({
+      agent: serializeAgent(registered),
+      analysis,
+      blacklistMatch: blacklistMatch ? { reason: blacklistMatch.reason } : null,
+      fetchedMetrics: performanceMetrics || null
+    });
+  } catch (error) {
+    console.error("URL Registration error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/agents/:id — fetch passport
 agentsRouter.get("/:id", async (req, res) => {
   try {
