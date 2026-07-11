@@ -89,3 +89,112 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* 3D Passport Booklet Styles */
+.passport-perspective {
+  perspective: 1500px;
+  display: flex;
+  justify-content: center;
+}
+
+.passport-container {
+  position: relative;
+  width: 360px;
+  height: 520px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.passport-container.open {
+  width: 720px;
+}
+
+.passport-book {
+  position: absolute;
+  width: 360px;
+  height: 520px;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  transition: left 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* When open, move the book base to the right side (X=360) so the left page flips open to the left side (X=0) */
+.passport-container.open .passport-book {
+  left: 360px;
+}
+
+/* The leaf contains the front cover and the left inner page back-to-back */
+.passport-leaf {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+}
+
+.passport-container.open .passport-flip-leaf {
+  transform: rotateY(-180deg);
+}
+
+.passport-page-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  backface-visibility: hidden;
+  border-radius: 4px 12px 12px 4px;
+}
+
+/* Front Cover - visible when closed */
+.passport-cover-front {
+  background: linear-gradient(135deg, #0f1624 0%, #172439 100%);
+  border: 4px solid #141c2c;
+  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.5), inset 1px 1px 3px rgba(255, 255, 255, 0.1);
+}
+
+/* Left Page Inside - back of the front cover (rotated 180deg) */
+.passport-page-left {
+  background: #f4edd4;
+  border: 1px solid #dcd4b8;
+  border-radius: 12px 4px 4px 12px;
+  box-shadow: inset -5px 0 10px rgba(0,0,0,0.1);
+  transform: rotateY(180deg);
+}
+
+/* Right Page Inside - sits static on the right side */
+.passport-page-right {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  background: #fdfaf0;
+  border: 1px solid #e7dfc7;
+  border-radius: 4px 12px 12px 4px;
+  box-shadow: 5px 5px 10px rgba(0,0,0,0.15), inset 5px 0 10px rgba(0,0,0,0.1);
+}
+
+/* Gold foil text and borders */
+.gold-foil {
+  background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.5));
+}
+
+.gold-border {
+  border-image: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%) 1;
+}
+
+/* Passport watermark pattern background */
+.passport-watermark {
+  background-image: radial-gradient(circle at 50% 50%, rgba(220, 212, 184, 0.15) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+

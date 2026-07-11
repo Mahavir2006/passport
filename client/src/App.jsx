@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import NavBar from "./components/NavBar.jsx";
-import RegisterPage from "./pages/RegisterPage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import PassportPage from "./pages/PassportPage.jsx";
 import VisaPage from "./pages/VisaPage.jsx";
 import ImmigrationPage from "./pages/ImmigrationPage.jsx";
@@ -61,7 +61,8 @@ export default function App() {
         <Route
           path="/"
           element={
-            <RegisterPage
+            <LandingPage
+              agent={agent}
               onRegistered={(newAgent) => {
                 setAgentId(newAgent.id);
                 setAgent(newAgent);
