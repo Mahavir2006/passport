@@ -69,7 +69,7 @@ agentsRouter.post("/blacklist/all", async (req, res) => {
     const id = `BL-${nanoid(8).toUpperCase()}`;
     const addedAt = nowIso();
     
-    await addToBlacklist({
+    const blacklistResult = await addToBlacklist({
       id,
       agentName: agentName || "",
       creator: creator || "",
@@ -91,6 +91,7 @@ agentsRouter.post("/blacklist/all", async (req, res) => {
     res.status(201).json({
       entry: { id, agentName, creator, reason, addedAt },
       flaggedAgentIds: matches.map((m) => m.id),
+      txHash: blacklistResult.txHash
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -205,13 +206,14 @@ agentsRouter.post("/:id/visa", async (req, res) => {
     const result = await recordVisa(agent.id, website, status, reason);
 
     if (status === "approved") {
-      await addStamp({
+      const stampResult = await addStamp({
         id: `STP-${nanoid(8).toUpperCase()}`,
         agentId: agent.id,
         website,
         action: "Entry granted",
         timestamp: nowIso()
       });
+      result.txHash = stampResult.txHash;
     }
 
     res.json(result);
@@ -223,7 +225,7 @@ agentsRouter.post("/:id/visa", async (req, res) => {
 async function recordVisa(agentId, website, status, reason) {
   const id = `VISA-${nanoid(8).toUpperCase()}`;
   const issuedAt = nowIso();
-  await addVisa({
+  const visaResult = await addVisa({
     id,
     agentId,
     website,
@@ -231,7 +233,7 @@ async function recordVisa(agentId, website, status, reason) {
     reason,
     issuedAt
   });
-  return { id, agentId, website, status, reason, issuedAt };
+  return visaResult;
 }
 
 // GET /api/agents/:id/stamps — activity log
@@ -270,14 +272,16 @@ agentsRouter.post("/:id/simulate-behavior", async (req, res) => {
     }
 
     // Submit trust score update on-chain
-    await updateTrustScore(row.id, newScore, `Behavior simulated with delta ${change}`);
+    const trustResult = await updateTrustScore(row.id, newScore, `Behavior simulated with delta ${change}`);
+    let txHash = trustResult.txHash;
 
     if (verificationStatus !== row.verificationStatus) {
-      await updateVerificationStatus(row.id, verificationStatus);
+      const verifResult = await updateVerificationStatus(row.id, verificationStatus);
+      txHash = verifResult.txHash;
     }
 
     const updated = await getAgent(row.id);
-    res.json(serializeAgent(updated));
+    res.json({ ...serializeAgent(updated), txHash });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

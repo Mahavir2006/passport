@@ -14,15 +14,12 @@ const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", "Agent
 const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
 const abi = artifact.abi;
 
-const provider = new JsonRpcProvider(process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology");
-const wallet = new Wallet(process.env.AMOY_PRIVATE_KEY, provider);
+const provider = new JsonRpcProvider(process.env.RPC_URL || "http://127.0.0.1:8545");
+const wallet = new Wallet(process.env.PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
 export const contract = new Contract(process.env.CONTRACT_ADDRESS, abi, wallet);
 
 // Helper to get fresh nonce directly from the node without provider caching
-async function getFreshNonce() {
-  const hexCount = await provider.send("eth_getTransactionCount", [wallet.address, "latest"]);
-  return parseInt(hexCount, 16);
-}
+// Removed manual nonce management - ethers Wallet handles concurrent nonces natively
 
 // Map Solidity outputs to JS structures
 function mapAgent(solAgent) {
@@ -117,28 +114,27 @@ export async function registerAgent(agentData) {
     createdAt: agentData.createdAt,
     exists: true
   };
-  const nonce = await getFreshNonce();
-  const tx = await contract.registerAgent(agentStruct, { nonce });
+  const tx = await contract.registerAgent(agentStruct);
   await tx.wait();
-  return getAgent(agentData.id);
+  const agent = await getAgent(agentData.id);
+  return { ...agent, txHash: tx.hash };
 }
 
 export async function updateTrustScore(id, trustScore, reason) {
-  const nonce = await getFreshNonce();
-  const tx = await contract.updateTrustScore(id, trustScore, reason, { nonce });
+  const tx = await contract.updateTrustScore(id, trustScore, reason);
   await tx.wait();
-  return getAgent(id);
+  const agent = await getAgent(id);
+  return { ...agent, txHash: tx.hash };
 }
 
 export async function updateVerificationStatus(id, status) {
-  const nonce = await getFreshNonce();
-  const tx = await contract.updateVerificationStatus(id, status, { nonce });
+  const tx = await contract.updateVerificationStatus(id, status);
   await tx.wait();
-  return getAgent(id);
+  const agent = await getAgent(id);
+  return { ...agent, txHash: tx.hash };
 }
 
 export async function addVisa(visaData) {
-  const nonce = await getFreshNonce();
   const tx = await contract.addVisa({
     id: visaData.id,
     agentId: visaData.agentId,
@@ -146,9 +142,9 @@ export async function addVisa(visaData) {
     status: visaData.status,
     reason: visaData.reason,
     issuedAt: visaData.issuedAt
-  }, { nonce });
+  });
   await tx.wait();
-  return visaData;
+  return { ...visaData, txHash: tx.hash };
 }
 
 export async function getVisas(agentId) {
@@ -161,16 +157,15 @@ export async function getVisas(agentId) {
 }
 
 export async function addStamp(stampData) {
-  const nonce = await getFreshNonce();
   const tx = await contract.addStamp({
     id: stampData.id,
     agentId: stampData.agentId,
     website: stampData.website,
     action: stampData.action,
     timestamp: stampData.timestamp
-  }, { nonce });
+  });
   await tx.wait();
-  return stampData;
+  return { ...stampData, txHash: tx.hash };
 }
 
 export async function getStamps(agentId) {
@@ -193,16 +188,15 @@ export async function getBlacklist() {
 }
 
 export async function addToBlacklist(entry, overrides = {}) {
-  const nonce = await getFreshNonce();
   const tx = await contract.addToBlacklist({
     id: entry.id,
     agentName: entry.agentName || "",
     creator: entry.creator || "",
     reason: entry.reason,
     addedAt: entry.addedAt
-  }, { nonce, ...overrides });
+  }, overrides);
   await tx.wait();
-  return entry;
+  return { ...entry, txHash: tx.hash };
 }
 
 export function nowIso() {

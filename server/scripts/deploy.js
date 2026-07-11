@@ -12,8 +12,8 @@ const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", "Agent
 async function main() {
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
   
-  const provider = new JsonRpcProvider(process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology");
-  const wallet = new Wallet(process.env.AMOY_PRIVATE_KEY, provider);
+  const provider = new JsonRpcProvider(process.env.RPC_URL || "http://127.0.0.1:8545");
+  const wallet = new Wallet(process.env.PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
 
   console.log("Deploying contract from:", wallet.address);
 

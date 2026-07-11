@@ -5,10 +5,15 @@ async function handle(res) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Request failed (${res.status})`);
   }
-  return res.json();
+  const data = await res.json();
+  if (data.txHash && api.onTx) {
+    api.onTx(data.txHash);
+  }
+  return data;
 }
 
 export const api = {
+  onTx: null,
   registerAgent: (data) =>
     fetch(BASE, {
       method: "POST",

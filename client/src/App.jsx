@@ -13,6 +13,14 @@ import { api } from "./lib/api.js";
 export default function App() {
   const [agentId, setAgentId] = useState(() => localStorage.getItem("agentId") || null);
   const [agent, setAgent] = useState(null);
+  const [latestTxHash, setLatestTxHash] = useState(null);
+
+  useEffect(() => {
+    api.onTx = (hash) => {
+      setLatestTxHash(hash);
+      setTimeout(() => setLatestTxHash(null), 15000);
+    };
+  }, []);
 
   useEffect(() => {
     if (agentId) {
@@ -38,6 +46,13 @@ export default function App() {
       <p className="text-white/80 text-xs mb-4">Immigration Services for AI Agents — est. 2006</p>
 
       <NavBar agentId={agentId} />
+
+      {latestTxHash && (
+        <div className="w-full max-w-md mt-2 p-2 bg-green-900 border border-green-500 text-green-100 text-xs rounded mb-4 break-all shadow-[0_0_10px_rgba(34,197,94,0.3)] animate-pulse">
+          <strong>✅ On-Chain Transaction Verified:</strong><br />
+          <span className="font-mono text-[10px] opacity-80">{latestTxHash}</span>
+        </div>
+      )}
 
       <Routes>
         <Route

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import XpWindow from "../components/XpWindow.jsx";
@@ -12,12 +12,16 @@ export default function ImmigrationPage({ agent, onDone }) {
   const [phase, setPhase] = useState("checking"); // checking | result
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const requestedRef = useRef(false);
 
   useEffect(() => {
     if (!website) {
       navigate("/visa");
       return;
     }
+
+    if (requestedRef.current) return;
+    requestedRef.current = true;
 
     let cancelled = false;
     const minSpinnerMs = 1400;
