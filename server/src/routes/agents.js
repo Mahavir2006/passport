@@ -125,7 +125,7 @@ agentsRouter.post("/", async (req, res) => {
 
   try {
     const perms = Array.isArray(requestedPermissions) ? requestedPermissions : [];
-    const analysis = analyzeAgentPurpose({ name, creator, purpose, requestedPermissions: perms });
+    const analysis = await analyzeAgentPurpose({ name, creator, purpose, requestedPermissions: perms });
 
     const id = `AGT-${nanoid(8).toUpperCase()}`;
     const createdAt = nowIso();
