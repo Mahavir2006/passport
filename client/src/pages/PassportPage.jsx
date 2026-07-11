@@ -12,7 +12,7 @@ export default function PassportPage({ agent }) {
   const navigate = useNavigate();
 
   return (
-    <XpWindow title="AgentPassport - Digital Passport" icon="🛂" wide={true}>
+    <XpWindow title="AgentPassport - Digital Passport" icon="" wide={true}>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

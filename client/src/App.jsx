@@ -80,7 +80,7 @@ export default function App() {
       {/* Top Status Bar */}
       <div className="bg-[#1D3D7A] text-white/80 text-[10px] flex justify-between px-4 py-1.5 uppercase tracking-widest border-b-2 border-[#111] font-bold shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-20 relative">
         <span className="flex items-center gap-2">
-          <span className="text-[12px]">🛂</span> AGENT PASSPORT OFFICE - IMMIGRATION SERVICES FOR AI AGENTS --- EST. 2006
+          AGENT PASSPORT OFFICE - IMMIGRATION SERVICES FOR AI AGENTS --- EST. 2006
         </span>
         <span>{formatDate(now)} • {formatTime(now)}</span>
       </div>
@@ -90,7 +90,6 @@ export default function App() {
         {/* Main Logo Text */}
         <div className="flex flex-col items-center mb-6">
           <h1 className="comic-title text-[56px] leading-none mb-1 drop-shadow-[4px_4px_0_rgba(17,17,17,1)] relative">
-            <span className="absolute -left-12 top-1 text-5xl drop-shadow-[3px_3px_0_#111]">🛂</span>
             AgentPassport
           </h1>
           <p className="text-white text-[11px] font-bold uppercase tracking-[0.2em] drop-shadow-[2px_2px_0_#111]">

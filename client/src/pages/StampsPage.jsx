@@ -46,12 +46,9 @@ export default function StampsPage({ agent }) {
               )}
               {data.stamps.map((s) => (
                 <div key={s.id} className="p-3 text-[11px] flex justify-between items-center hover:bg-white transition-colors">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl drop-shadow-[1px_1px_0_#111]">🛂</span>
-                    <div>
-                      <p className="font-black text-[#1D3D7A] text-[13px]">{s.website}</p>
-                      <p className="text-stone-600 font-bold">{s.action}</p>
-                    </div>
+                  <div>
+                    <p className="font-black text-[#1D3D7A] text-[13px]">{s.website}</p>
+                    <p className="text-stone-600 font-bold">{s.action}</p>
                   </div>
                   <p className="text-stone-500 font-bold opacity-80">{new Date(s.timestamp).toLocaleString()}</p>
                 </div>

@@ -369,11 +369,11 @@ export default function LandinCoverPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: W95.DESKTOP,
-        backgroundImage:
-          "repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(0,0,0,.04) 1px,rgba(0,0,0,.04) 2px)," +
-          "repeating-linear-gradient(90deg,transparent,transparent 1px,rgba(0,0,0,.04) 1px,rgba(0,0,0,.04) 2px)",
-        backgroundSize: "8px 8px",
+        background: "#2B54A3",
+        backgroundImage: "linear-gradient(rgba(43, 84, 163, 0.7), rgba(43, 84, 163, 0.7)), url('/xp-bg.jpg')",
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+        backgroundAttachment: "fixed",
         fontFamily: "MS Sans Serif, Tahoma, Arial, sans-serif",
         display: "flex",
         flexDirection: "column",
@@ -400,10 +400,10 @@ export default function LandinCoverPage() {
         </Win95Btn>
 
         <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-          {["🛂", "🔒", "🌐"].map((ico, i) => (
+          {["🔒", "🌐"].map((ico, i) => (
             <span
               key={i}
-              title={["Passport Office", "Security", "Internet"][i]}
+              title={["Security", "Internet"][i]}
               style={{ ...raised, padding: "3px 8px", fontSize: 20, cursor: "pointer", background: W95.FACE }}
             >
               {ico}
@@ -425,7 +425,7 @@ export default function LandinCoverPage() {
             textOverflow: "ellipsis",
           }}
         >
-          🛂 AgentPassport — Immigration Services for AI Agents
+          AgentPassport — Immigration Services for AI Agents
         </div>
 
         <div style={{ flex: 1 }} />
@@ -462,99 +462,101 @@ export default function LandinCoverPage() {
         }}
       >
         {/* ── HERO WINDOW ── */}
-        <div style={{ ...windowChrome, width: "100%", maxWidth: 1100 }}>
-          <Win95TitleBar icon="🛂" title="AgentPassport.exe — Welcome" />
-
-          {/* Menu bar */}
-          <div
-            style={{
-              background: W95.FACE,
-              borderBottom: `1px solid ${W95.SHADOW}`,
-              padding: "3px 12px",
-              display: "flex",
-              gap: 20,
-              fontSize: 15,
-            }}
-          >
-            {["File", "Edit", "View", "Help"].map((m) => (
-              <span
-                key={m}
-                style={{ padding: "3px 8px", cursor: "default", userSelect: "none" }}
-                onMouseEnter={(e) => { e.target.style.background = W95.TITLEBAR; e.target.style.color = W95.TITLETEXT; }}
-                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = W95.BTNTEXT; }}
-              >
-                {m}
-              </span>
-            ))}
-          </div>
-
-          {/* Hero body — 3 columns: icon | description | login */}
-          <div style={{ padding: 24, display: "flex", gap: 24, alignItems: "stretch" }}>
-
-            {/* ① Icon panel */}
+        <div className="w-full max-w-2xl bg-[#c0c0c0] border-[3px] border-[#dfdfdf] border-r-[#404040] border-b-[#404040] shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
+          <Win95TitleBar icon="" title="AgentPassport.exe — Welcome" />
+          <div className="p-1 border-[3px] border-[#404040] border-r-[#dfdfdf] border-b-[#dfdfdf] bg-[#ece9d8]">
+            {/* Menu bar */}
             <div
               style={{
-                ...sunken,
-                background: "#000080",
-                padding: 28,
+                background: W95.FACE,
+                borderBottom: `1px solid ${W95.SHADOW}`,
+                padding: "3px 12px",
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: 200,
-                gap: 12,
-                flexShrink: 0,
+                gap: 20,
+                fontSize: 15,
               }}
             >
-              <span style={{ fontSize: 88, lineHeight: 1 }}>🛂</span>
-              <div style={{ color: "#ffff00", fontWeight: "bold", fontSize: 18, textAlign: "center", textShadow: "1px 1px 0 #000", letterSpacing: 2 }}>
-                AGENT<br />PASSPORT
-              </div>
-              <div style={{ color: "#c0c0c0", fontSize: 14, textAlign: "center", letterSpacing: 1 }}>
-                v2.0.06<br />EST. 2006
-              </div>
+              {["File", "Edit", "View", "Help"].map((m) => (
+                <span
+                  key={m}
+                  style={{ padding: "3px 8px", cursor: "default", userSelect: "none" }}
+                  onMouseEnter={(e) => { e.target.style.background = W95.TITLEBAR; e.target.style.color = W95.TITLETEXT; }}
+                  onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = W95.BTNTEXT; }}
+                >
+                  {m}
+                </span>
+              ))}
             </div>
 
-            {/* ② Description */}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 30, fontWeight: "bold", color: "#000080", marginBottom: 6, letterSpacing: 2, textTransform: "uppercase", textShadow: `1px 1px 0 ${W95.SHADOW}` }}>
-                🌐 AgentPassport
+            {/* Hero body — 3 columns: icon | description | login */}
+            <div style={{ padding: 24, display: "flex", gap: 24, alignItems: "stretch" }}>
+
+              {/* ① Icon panel */}
+              <div
+                style={{
+                  ...sunken,
+                  background: "#000080",
+                  padding: 28,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 200,
+                  gap: 12,
+                  flexShrink: 0,
+                }}
+              >
+                <div className="flex justify-center mb-6 drop-shadow-[4px_4px_0_rgba(0,0,0,0.3)] transform -rotate-2">
+                </div>
+                <div style={{ color: "#ffff00", fontWeight: "bold", fontSize: 18, textAlign: "center", textShadow: "1px 1px 0 #000", letterSpacing: 2 }}>
+                  AGENT<br />PASSPORT
+                </div>
+                <div style={{ color: "#c0c0c0", fontSize: 14, textAlign: "center", letterSpacing: 1 }}>
+                  v2.0.06<br />EST. 2006
+                </div>
               </div>
-              <div style={{ fontSize: 17, color: "#800000", fontWeight: "bold", marginBottom: 14, letterSpacing: 1 }}>
-                ★ Immigration Services for AI Agents ★
+
+              {/* ② Description */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 30, fontWeight: "bold", color: "#000080", marginBottom: 6, letterSpacing: 2, textTransform: "uppercase", textShadow: `1px 1px 0 ${W95.SHADOW}` }}>
+                  AgentPassport
+                </div>
+                <div style={{ fontSize: 17, color: "#800000", fontWeight: "bold", marginBottom: 14, letterSpacing: 1 }}>
+                  ★ Immigration Services for AI Agents ★
+                </div>
+
+                <HRule />
+
+                <p style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 14 }}>
+                  <b>AgentPassport</b> is a blockchain-based identity &amp; immigration system
+                  for autonomous AI agents. Register your agent, receive an on-chain
+                  passport, apply for visas to enter digital environments, and track
+                  every action on an immutable ledger.
+                </p>
+
+                <p style={{ fontSize: 16, lineHeight: 1.8, color: "#000080", fontWeight: "bold" }}>
+                  ➤ Powered by a Solidity smart contract on a local Hardhat node.<br />
+                  ➤ AI risk-assessment via Groq (llama-3.3-70b) with heuristic fallback.<br />
+                  ➤ Every trust score change, visa, and stamp is a permanent on-chain tx.
+                </p>
               </div>
 
-              <HRule />
-
-              <p style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 14 }}>
-                <b>AgentPassport</b> is a blockchain-based identity &amp; immigration system
-                for autonomous AI agents. Register your agent, receive an on-chain
-                passport, apply for visas to enter digital environments, and track
-                every action on an immutable ledger.
-              </p>
-
-              <p style={{ fontSize: 16, lineHeight: 1.8, color: "#000080", fontWeight: "bold" }}>
-                ➤ Powered by a Solidity smart contract on a local Hardhat node.<br />
-                ➤ AI risk-assessment via Groq (llama-3.3-70b) with heuristic fallback.<br />
-                ➤ Every trust score change, visa, and stamp is a permanent on-chain tx.
-              </p>
+              {/* ③ Login panel */}
+              <LoginPanel navigate={navigate} />
             </div>
 
-            {/* ③ Login panel */}
-            <LoginPanel navigate={navigate} />
-          </div>
-
-          {/* Status bar */}
-          <div style={{ borderTop: `1px solid ${W95.SHADOW}`, padding: "4px 12px", display: "flex", gap: 10, fontSize: 14 }}>
-            <div style={{ ...sunken, padding: "2px 12px", flex: 2 }}>✅ Blockchain node connected — Hardhat localhost:8545</div>
-            <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>Agents registered: 18,593</div>
-            <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>🔒 128-bit encryption</div>
+            {/* Status bar */}
+            <div style={{ borderTop: `1px solid ${W95.SHADOW}`, padding: "4px 12px", display: "flex", gap: 10, fontSize: 14 }}>
+              <div style={{ ...sunken, padding: "2px 12px", flex: 2 }}>Blockchain node connected — Hardhat localhost:8545</div>
+              <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>Agents registered: 18,593</div>
+              <div style={{ ...sunken, padding: "2px 12px", flex: 1 }}>128-bit encryption</div>
+            </div>
           </div>
         </div>
 
         {/* ── FEATURES WINDOW ── */}
         <div style={{ ...windowChrome, width: "100%", maxWidth: 1100 }}>
-          <Win95TitleBar icon="📦" title="Features — AgentPassport" />
+          <Win95TitleBar icon="" title="Features — AgentPassport" />
 
           <div style={{ padding: 18 }}>
             <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 14, color: "#000080", textTransform: "uppercase", letterSpacing: 1 }}>
@@ -562,23 +564,23 @@ export default function LandinCoverPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-              <FeatureCard icon="🪪" title="Agent Registration"
+              <FeatureCard icon="" title="Agent Registration"
                 desc="Register any AI agent with name, creator, purpose and requested permissions. Receive a unique on-chain passport ID (AGT-XXXXXXXX)." />
-              <FeatureCard icon="🤖" title="AI Risk Assessment"
+              <FeatureCard icon="" title="AI Risk Assessment"
                 desc="Groq LLM (llama-3.3-70b) analyzes each agent's stated purpose and assigns a trust score (0–100), risk level, and spending limit." />
-              <FeatureCard icon="📜" title="Digital Passport"
+              <FeatureCard icon="" title="Digital Passport"
                 desc="Every agent gets a permanent on-chain ID card: verification status, trust score, granted permissions, spending limit and issuance timestamp." />
-              <FeatureCard icon="✈" title="Visa Applications"
+              <FeatureCard icon="" title="Visa Applications"
                 desc="Agents apply for visas to enter 4 demo sites: ShopSite.com, SocialHub.com, DataVault.com, NewsWire.com — each with trust score thresholds." />
-              <FeatureCard icon="🛃" title="Immigration Checkpoint"
-                desc="A border-check simulation with a rule engine. Returns Access Granted ✅ or Access Denied ❌ with the full reasoning on-chain." />
-              <FeatureCard icon="🗂" title="Activity Stamps"
+              <FeatureCard icon="" title="Immigration Checkpoint"
+                desc="A border-check simulation with a rule engine. Returns Access Granted or Access Denied with the full reasoning on-chain." />
+              <FeatureCard icon="" title="Activity Stamps"
                 desc="Every approved entry mints an on-chain stamp. The activity log shows your full visa history, approvals, denials and timestamps." />
-              <FeatureCard icon="📊" title="Trust Score Dashboard"
+              <FeatureCard icon="" title="Trust Score Dashboard"
                 desc="Live trust bar with colour coding. Dev controls simulate good (+15), bad (−15) and malicious (−50) behaviour — all written on-chain." />
-              <FeatureCard icon="🚫" title="Blacklist Database"
+              <FeatureCard icon="" title="Blacklist Database"
                 desc="Admins add watchlist entries by agent name or creator. Any matching registered agent is instantly blacklisted and denied all visas." />
-              <FeatureCard icon="🔗" title="On-Chain Transparency"
+              <FeatureCard icon="" title="On-Chain Transparency"
                 desc="Every action — registration, trust update, visa, stamp — emits a Solidity event and returns a tx hash shown as a notification banner." />
             </div>
           </div>
@@ -589,7 +591,7 @@ export default function LandinCoverPage() {
 
           {/* How it works */}
           <div style={{ ...windowChrome, flex: 2 }}>
-            <Win95TitleBar icon="❓" title="How It Works" />
+            <Win95TitleBar icon="" title="How It Works" />
             <div style={{ padding: 18 }}>
               {[
                 ["1", "Start the Hardhat blockchain node (npx hardhat node)"],
@@ -625,19 +627,19 @@ export default function LandinCoverPage() {
 
           {/* Enter the system */}
           <div style={{ ...windowChrome, flex: 1, minWidth: 260 }}>
-            <Win95TitleBar icon="🚪" title="Enter the System" />
+            <Win95TitleBar icon="" title="Enter the System" />
             <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ ...sunken, background: W95.SUNKEN_BG, padding: 10, fontSize: 15, marginBottom: 4 }}>
                 Select a section to enter:
               </div>
               {[
-                { icon: "🛂", label: "Register New Agent", path: "/home",        primary: true },
-                { icon: "📋", label: "View My Passport",   path: "/passport" },
-                { icon: "✈",  label: "Apply for Visa",     path: "/visa" },
-                { icon: "🛃", label: "Immigration Check",   path: "/immigration" },
-                { icon: "🗂", label: "Activity Stamps",     path: "/stamps" },
-                { icon: "📊", label: "Trust Dashboard",     path: "/trust" },
-                { icon: "🚫", label: "Blacklist Database",  path: "/blacklist" },
+                { icon: "", label: "Register New Agent", path: "/home",        primary: true },
+                { icon: "", label: "View Digital Passport",  path: "/passport",    primary: false },
+                { icon: "", label: "Apply for Visa",     path: "/visa" },
+                { icon: "", label: "Immigration Check",   path: "/immigration" },
+                { icon: "", label: "Activity Stamps",     path: "/stamps" },
+                { icon: "", label: "Trust Dashboard",     path: "/trust" },
+                { icon: "", label: "Blacklist Database",  path: "/blacklist" },
               ].map(({ icon, label, path, primary }) => (
                 <Win95Btn
                   key={path}

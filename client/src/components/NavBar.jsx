@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 
 const links = [
-  { to: "/home", label: "REGISTER", icon: "👤" },
-  { to: "/passport", label: "PASSPORT", icon: "🛂" },
-  { to: "/visa", label: "APPLY FOR VISA", icon: "📝" },
-  { to: "/stamps", label: "ACTIVITY LOG", icon: "📋" },
-  { to: "/trust", label: "TRUST SCORE", icon: "⭐" },
-  { to: "/blacklist", label: "BLACKLIST", icon: "⚠️" },
+  { to: "/home", label: "REGISTER" },
+  { to: "/passport", label: "PASSPORT" },
+  { to: "/visa", label: "APPLY FOR VISA" },
+  { to: "/stamps", label: "ACTIVITY LOG" },
+  { to: "/trust", label: "TRUST SCORE" },
+  { to: "/blacklist", label: "BLACKLIST" },
 ];
 
 export default function NavBar({ agentId }) {

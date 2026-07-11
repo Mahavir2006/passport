@@ -1,15 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
-
 body {
   font-family: Tahoma, "MS Sans Serif", "Segoe UI", Verdana, sans-serif;
-  background: #2B54A3;
-  /* Retro dotted halftone background */
-  background-image: radial-gradient(#1D3D7A 15%, transparent 15%);
-  background-size: 4px 4px;
+  background-color: #2B54A3;
+  /* Y2K Windows XP theme background with low transparency overlay */
+  background-image: linear-gradient(rgba(43, 84, 163, 0.7), rgba(43, 84, 163, 0.7)), url('/xp-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;

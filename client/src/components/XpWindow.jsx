@@ -1,4 +1,4 @@
-export default function XpWindow({ title, icon = "📘", children, wide = false }) {
+export default function XpWindow({ title, icon = "", children, wide = false }) {
   return (
     <div className={`xp-window ${wide ? "max-w-4xl" : "max-w-2xl"} w-full mx-auto relative z-20`}>
       <div className="xp-titlebar">
