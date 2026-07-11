@@ -1,20 +1,20 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { 
-  getAgent, 
-  getAllAgents, 
-  registerAgent, 
-  updateTrustScore, 
-  updateVerificationStatus, 
-  addVisa, 
-  getVisas, 
-  addStamp, 
-  getStamps, 
-  getBlacklist, 
-  addToBlacklist, 
-  findBlacklistMatch, 
-  WEBSITES, 
-  nowIso 
+import {
+  getAgent,
+  getAllAgents,
+  registerAgent,
+  updateTrustScore,
+  updateVerificationStatus,
+  addVisa,
+  getVisas,
+  addStamp,
+  getStamps,
+  getBlacklist,
+  addToBlacklist,
+  findBlacklistMatch,
+  WEBSITES,
+  nowIso
 } from "../db.js";
 import { analyzeAgentPurpose } from "../ai.js";
 
@@ -43,6 +43,23 @@ agentsRouter.get("/websites", (req, res) => {
   res.json(Object.values(WEBSITES));
 });
 
+// POST /api/agents/visit — agent visits a custom URL, confirms reachability
+agentsRouter.post("/visit", async (req, res) => {
+  const { url, agentId } = req.body;
+  if (!url) return res.status(400).json({ error: "url is required" });
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": `AgentPassport-Agent/${agentId || "unknown"}` },
+    });
+    res.json({ reached: true, status: response.status, url });
+  } catch (err) {
+    res.json({ reached: false, error: err.message, url });
+  }
+});
+
 // Blacklist admin routes
 agentsRouter.get("/blacklist/all", async (req, res) => {
   try {
@@ -68,7 +85,7 @@ agentsRouter.post("/blacklist/all", async (req, res) => {
   try {
     const id = `BL-${nanoid(8).toUpperCase()}`;
     const addedAt = nowIso();
-    
+
     const blacklistResult = await addToBlacklist({
       id,
       agentName: agentName || "",
