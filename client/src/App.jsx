@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import NavBar from "./components/NavBar.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
+import LandinCoverPage from "./pages/LandinCoverPage.jsx";
 import PassportPage from "./pages/PassportPage.jsx";
 import VisaPage from "./pages/VisaPage.jsx";
 import ImmigrationPage from "./pages/ImmigrationPage.jsx";
@@ -15,6 +16,7 @@ export default function App() {
   const [agent, setAgent] = useState(null);
   const [latestTxHash, setLatestTxHash] = useState(null);
   const [now, setNow] = useState(new Date());
+  const location = useLocation();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -55,6 +57,24 @@ export default function App() {
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toUpperCase();
   };
 
+  // Cover page owns its own full-screen layout — render it without the App shell
+  if (location.pathname === "/") {
+    return (
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <LandinCoverPage
+              agent={agent}
+              onRegisterClick={() => {}}
+              onEnterClick={() => {}}
+            />
+          }
+        />
+      </Routes>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col font-tahoma selection:bg-[#FCD86C] selection:text-[#111]">
       {/* Top Status Bar */}
@@ -91,7 +111,7 @@ export default function App() {
         <div className="w-full flex-1 flex justify-center relative max-w-6xl mt-4">
           <Routes>
             <Route
-              path="/"
+              path="/home"
               element={
                 <LandingPage
                   agent={agent}
@@ -104,11 +124,11 @@ export default function App() {
             />
             <Route
               path="/passport"
-              element={agent ? <PassportPage agent={agent} /> : <Navigate to="/" />}
+              element={agent ? <PassportPage agent={agent} /> : <Navigate to="/home" />}
             />
             <Route
               path="/visa"
-              element={agent ? <VisaPage agent={agent} /> : <Navigate to="/" />}
+              element={agent ? <VisaPage agent={agent} /> : <Navigate to="/home" />}
             />
             <Route
               path="/immigration"
@@ -116,13 +136,13 @@ export default function App() {
                 agent ? (
                   <ImmigrationPage agent={agent} onDone={refreshAgent} />
                 ) : (
-                  <Navigate to="/" />
+                  <Navigate to="/home" />
                 )
               }
             />
             <Route
               path="/stamps"
-              element={agent ? <StampsPage agent={agent} /> : <Navigate to="/" />}
+              element={agent ? <StampsPage agent={agent} /> : <Navigate to="/home" />}
             />
             <Route
               path="/trust"
@@ -130,11 +150,13 @@ export default function App() {
                 agent ? (
                   <TrustPage agent={agent} onUpdate={refreshAgent} />
                 ) : (
-                  <Navigate to="/" />
+                  <Navigate to="/home" />
                 )
               }
             />
             <Route path="/blacklist" element={<BlacklistPage />} />
+            {/* Fallback: anything unknown goes to cover */}
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
       </div>

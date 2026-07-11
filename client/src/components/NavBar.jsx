@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 
 const links = [
-  { to: "/", label: "REGISTER", icon: "👤" },
+  { to: "/home", label: "REGISTER", icon: "👤" },
   { to: "/passport", label: "PASSPORT", icon: "🛂" },
   { to: "/visa", label: "APPLY FOR VISA", icon: "📝" },
   { to: "/stamps", label: "ACTIVITY LOG", icon: "📋" },
@@ -14,7 +14,7 @@ export default function NavBar({ agentId }) {
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-wrap gap-0 text-[11px] uppercase font-bold justify-center px-4 relative z-10">
       {links.map((l, idx) => {
-        const exempt = l.to === "/" || l.to === "/blacklist";
+        const exempt = l.to === "/home" || l.to === "/blacklist";
         const disabled = !exempt && !agentId;
         const active = loc.pathname === l.to;
         return (
