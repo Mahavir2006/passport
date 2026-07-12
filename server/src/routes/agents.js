@@ -249,27 +249,36 @@ agentsRouter.post("/register-url", async (req, res) => {
     return res.status(400).json({ error: "Agent URL is required" });
   }
 
+  console.log(`\n[Server Backend] 📥 Request to register agent via URL: ${url}`);
+
   try {
     // 1. Fetch metadata from the real AI agent's endpoint
+    console.log(`[Server Backend] 🔄 Fetching metadata from ${url}...`);
     const response = await fetch(url, {
       method: "GET",
       signal: AbortSignal.timeout(8000)
     });
     
     if (!response.ok) {
+      console.error(`[Server Backend] ❌ Failed to fetch from agent URL. Status: ${response.status}`);
       return res.status(400).json({ error: `Failed to fetch from agent URL. Status: ${response.status}` });
     }
 
     const metadata = await response.json();
+    console.log(`[Server Backend] 📥 Fetched Metadata Payload:`, JSON.stringify(metadata, null, 2));
+
     const { name, creator, purpose, requestedPermissions, performanceMetrics } = metadata;
 
     if (!name || !creator || !purpose) {
+      console.error("[Server Backend] ❌ Fetched metadata is missing required fields (name, creator, purpose)");
       return res.status(400).json({ error: "Fetched metadata is missing name, creator, or purpose." });
     }
 
     // 2. Analyze using ai.js, now passing performanceMetrics!
+    console.log(`[Server Backend] 🧠 Running AI risk & trust analysis...`);
     const perms = Array.isArray(requestedPermissions) ? requestedPermissions : [];
     const analysis = await analyzeAgentPurpose({ name, creator, purpose, requestedPermissions: perms, performanceMetrics });
+    console.log(`[Server Backend] 📊 Analysis results:`, JSON.stringify(analysis, null, 2));
 
     const id = `AGT-${nanoid(8).toUpperCase()}`;
     const createdAt = nowIso();
@@ -281,12 +290,14 @@ agentsRouter.post("/register-url", async (req, res) => {
     let grantedPermissions = analysis.grantedPermissions;
 
     if (blacklistMatch) {
+      console.log(`[Server Backend] ⚠️ Creator or Name matches blacklist database! Gating agent.`);
       verificationStatus = "blacklisted";
       trustScore = Math.min(trustScore, 5);
       grantedPermissions = [];
     }
 
     // 3. Register on blockchain
+    console.log(`[Server Backend] ⛓️ Minting AgentPassport on-chain (ID: ${id})...`);
     const registered = await registerAgent({
       id,
       name,
@@ -300,6 +311,7 @@ agentsRouter.post("/register-url", async (req, res) => {
       verificationStatus,
       createdAt
     });
+    console.log(`[Server Backend] ✅ Successfully registered on-chain with Transaction Hash: ${registered.txHash}`);
 
     res.status(201).json({
       agent: serializeAgent(registered),
@@ -308,7 +320,7 @@ agentsRouter.post("/register-url", async (req, res) => {
       fetchedMetrics: performanceMetrics || null
     });
   } catch (error) {
-    console.error("URL Registration error:", error);
+    console.error("[Server Backend] ❌ URL Registration error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -461,18 +473,24 @@ agentsRouter.post("/:id/verify-visa", async (req, res) => {
     const agent = serializeAgent(row);
     const minTrust = websiteRules?.minTrustScore ?? 0;
 
+    console.log(`\n[Server Backend] 🛂 Verifying visa for Agent: ${agent.name} (ID: ${agent.id})`);
+    console.log(`[Server Backend] 📊 Agent Trust Score: ${agent.trustScore} | Website Min Trust Required: ${minTrust}`);
+
     const blacklistMatch = await findBlacklistMatch(agent.name, agent.creator);
     if (agent.verificationStatus === "blacklisted" || blacklistMatch) {
+      console.log(`[Server Backend] ❌ Visa DENIED: Agent is blacklisted.`);
       return res.json({ decision: "denied", reason: "Agent is blacklisted." });
     }
 
     if (agent.trustScore < minTrust) {
+      console.log(`[Server Backend] ❌ Visa DENIED: Trust score ${agent.trustScore} < ${minTrust}`);
       return res.json({
         decision: "denied",
         reason: `Trust score ${agent.trustScore} is below required minimum (${minTrust}).`,
       });
     }
 
+    console.log(`[Server Backend] ✅ Visa APPROVED: Meets trust requirements.`);
     // HACKATHON SHORTCUT: credentials are in-memory only, never on-chain.
     const creds = getCredentials(agent.id);
 

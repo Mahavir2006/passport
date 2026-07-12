@@ -23,7 +23,8 @@ const PRODUCTS = [
 
 // ── Metadata endpoint (existing — unchanged) ─────────────────────────────────
 app.get("/metadata", (req, res) => {
-  res.json({
+  console.log("\n[Mock AI Agent] 📥 Request received for metadata");
+  const payload = {
     name: "Nexus Data Crawler (Real Agent)",
     creator: "NexusAI",
     purpose:
@@ -35,12 +36,15 @@ app.get("/metadata", (req, res) => {
       errorRate: 0.12,
       maliciousAttemptsDetected: 2,
     },
-  });
+  };
+  console.log("[Mock AI Agent] 📤 Sending metadata payload:", JSON.stringify(payload, null, 2));
+  res.json(payload);
 });
 
 // ── GET /login-agent — Playwright lands here; we call back to verify the visa ─
 app.get("/login-agent", async (req, res) => {
   const { passportId } = req.query;
+  console.log(`\n[Mock AI Agent] 🛂 Agent attempting to login with passport: ${passportId}`);
 
   if (!passportId) {
     return res.status(400).send("<h1>Missing passportId query parameter</h1>");
@@ -63,8 +67,10 @@ app.get("/login-agent", async (req, res) => {
     decision = data.decision;
     reason   = data.reason || "";
     username = data.linkedUsername || "";
+    console.log(`[Mock AI Agent] 🔍 Visa verification outcome: ${decision.toUpperCase()} - Reason: "${reason}"`);
   } catch (err) {
     reason = err.message;
+    console.error(`[Mock AI Agent] ❌ Error contacting main server:`, err.message);
   }
 
   const granted = decision === "approved";
